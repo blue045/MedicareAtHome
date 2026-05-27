@@ -1,0 +1,29 @@
+<svg width="760" height="560" viewBox="0 0 760 560" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Home medical care illustration">
+  <rect width="760" height="560" rx="56" fill="#070B14"/>
+  <path d="M57 453C114 338 205 278 331 272c145-6 216-72 283-178 26-42 90-22 93 27l7 121c7 119-82 222-201 229l-401 25c-45 3-75-3-55-43Z" fill="url(#bg)" opacity=".9"/>
+  <g opacity=".35">
+    <path d="M80 94h597M80 154h597M80 214h597M80 274h597M80 334h597M80 394h597" stroke="#1F3B53"/>
+    <path d="M121 60v438M201 60v438M281 60v438M361 60v438M441 60v438M521 60v438M601 60v438" stroke="#1F3B53"/>
+  </g>
+  <rect x="84" y="112" width="236" height="293" rx="32" fill="#111827" stroke="#1E293B"/>
+  <circle cx="202" cy="184" r="55" fill="#10243A"/>
+  <path d="M178 188c15 25 52 25 67 0" stroke="#67E8F9" stroke-width="12" stroke-linecap="round"/>
+  <circle cx="202" cy="157" r="34" fill="#0EA5E9"/>
+  <path d="M162 278h79M162 316h104M162 354h73" stroke="#E0F2FE" stroke-width="14" stroke-linecap="round"/>
+  <rect x="384" y="95" width="286" height="357" rx="36" fill="#0B1220" stroke="#1F2937"/>
+  <path d="M429 177l101-78 101 78v140c0 12-10 22-22 22H451c-12 0-22-10-22-22V177Z" fill="#ECFEFF"/>
+  <path d="M530 83l125 97-21 27-104-80-104 80-21-27 125-97Z" fill="#0EA5E9"/>
+  <path d="M508 183h45v45h45v45h-45v45h-45v-45h-45v-45h45v-45Z" fill="#22C55E"/>
+  <rect x="419" y="372" width="225" height="44" rx="22" fill="#0E7490" opacity=".9"/>
+  <path d="M455 394h153" stroke="#ECFEFF" stroke-width="12" stroke-linecap="round"/>
+  <circle cx="106" cy="93" r="10" fill="#22D3EE"/>
+  <circle cx="640" cy="458" r="10" fill="#22C55E"/>
+  <circle cx="689" cy="94" r="6" fill="#FACC15"/>
+  <defs>
+    <linearGradient id="bg" x1="80" y1="464" x2="709" y2="94" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#0EA5E9" stop-opacity=".75"/>
+      <stop offset=".54" stop-color="#22D3EE" stop-opacity=".28"/>
+      <stop offset="1" stop-color="#22C55E" stop-opacity=".55"/>
+    </linearGradient>
+  </defs>
+</svg>

@@ -1,0 +1,57 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="theme-color" content="#f6f7fb" />
+    <meta name="description" content="Store user dashboard for Medicare At Home." />
+    <link rel="manifest" href="/manifest.json" />
+    <script>
+      (function () {
+        try {
+          var savedTheme = localStorage.getItem("medicare-theme");
+          document.documentElement.dataset.theme = savedTheme === "dark" ? "dark" : "light";
+        } catch (error) {
+          document.documentElement.dataset.theme = "light";
+        }
+      })();
+    </script>
+    <link rel="preload" href="/assets/css/styles.css?v=typography-spacing-fix-v5" as="style" />
+    <link rel="stylesheet" href="/assets/css/styles.css?v=typography-spacing-fix-v5" />
+    <link rel="icon" href="/assets/img/logo.png" type="image/png" />
+    <title>Order Tracking & History | Medicare At Home</title>
+  </head>
+  <body data-page-title="Order Tracking & History" data-profile-view="orders-history">
+    <a class="skip-link" href="#main">Skip to content</a>
+    <div class="public-site-frame">
+    <header class="site-header">
+      <div class="container navbar">
+        <a class="brand" href="/" aria-label="Medicare At Home home"><img src="/assets/img/logo.png" alt="" width="44" height="44" /><span><span class="brand-mark" data-site-name>Medicare At Home</span><span class="brand-subtitle">Home Visit Medical Care</span></span></a>
+        <nav class="nav-links" id="navLinks" aria-label="Main navigation">
+          <a href="/Services">Services</a>
+          <a href="/Store">Store</a>
+          <a href="/Doctors">Doctors</a>
+          <a href="/Ambulance">Ambulance</a>
+          <a href="/Blood">Blood</a>
+          <a href="/Contact">Contact</a>
+          <a href="/About">About</a>
+          <button class="theme-toggle" id="themeToggle" type="button" aria-label="Switch to dark mode" aria-pressed="false"><span class="theme-toggle-icon">☾</span><span class="theme-toggle-text">Dark mode</span></button>
+        </nav>
+        <div class="nav-actions"><div data-auth-area></div><button class="mobile-menu-button" id="menuButton" aria-label="Open menu" aria-expanded="false" aria-controls="navLinks"><span></span></button></div>
+      </div>
+    </header>
+    <main id="main">
+      <section class="section section-alt profile-dashboard-section">
+        <div class="container">
+          <div class="section-head"><div><p class="section-kicker">Order Status</p><h1 class="section-title">Order tracking & history</h1><p class="section-copy">View every order, payment status, and delivery progress in one place.</p></div></div>
+          <div id="profileDashboard"><div class="loading-state">Loading dashboard...</div></div>
+        </div>
+      </section>
+    </main>
+    <footer class="site-footer"><div class="container footer-grid"><div class="brand"><img src="/assets/img/logo.png" alt="" width="44" height="44" loading="lazy" /><span><span class="brand-mark" data-site-name>Medicare At Home</span><span class="brand-subtitle" data-footer-location>Sultanpur, Feni, Bangladesh</span></span></div><p class="footer-credit">Made With <span aria-hidden="true">❤️‍🩹</span> By <a href="https://t.me/Ch0wdhury_Siam" target="_blank" rel="noopener noreferrer">Siam Chowdhury</a></p></div></footer>
+    </div>
+    <div class="toast" id="toast" aria-live="polite" aria-atomic="true"></div>
+    <script type="module" src="/assets/js/main.js?v=typography-spacing-fix-v5"></script>
+    <script type="module" src="/assets/js/store.js?v=typography-spacing-fix-v5"></script>
+  </body>
+</html>

@@ -1,0 +1,65 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="theme-color" content="#f6f7fb" />
+    <meta name="description" content="Browse medical equipment, check price and stock, then log in to order or add items to your cart." />
+    <link rel="manifest" href="/manifest.json" />
+    <script>(function () { try { var savedTheme = localStorage.getItem("medicare-theme"); document.documentElement.dataset.theme = savedTheme === "dark" ? "dark" : "light"; } catch (error) { document.documentElement.dataset.theme = "light"; } })();</script>
+    <link rel="preload" href="/assets/css/styles.css?v=typography-spacing-fix-v5" as="style" />
+    <link rel="stylesheet" href="/assets/css/styles.css?v=typography-spacing-fix-v5" />
+    <link rel="icon" href="/assets/img/logo.png" type="image/png" />
+    <title>Medical Equipment | Medicare At Home</title>
+  </head>
+  <body data-page-title="Medical Equipment" data-store-page="category" data-store-category="equipment">
+    <a class="skip-link" href="#main">Skip to content</a>
+    <div class="public-site-frame">
+    <header class="site-header">
+      <div class="container navbar">
+        <a class="brand" href="/" aria-label="Medicare At Home home"><img src="/assets/img/logo.png" alt="" width="44" height="44" /><span><span class="brand-mark" data-site-name>Medicare At Home</span><span class="brand-subtitle">Home Visit Medical Care</span></span></a>
+        <nav class="nav-links" id="navLinks" aria-label="Main navigation">
+          <a href="/Services">Services</a>
+          <a class="is-active" href="/Store">Store</a>
+          <a href="/Doctors">Doctors</a>
+          <a href="/Ambulance">Ambulance</a>
+          <a href="/Blood">Blood</a>
+          <a href="/Contact">Contact</a>
+          <a href="/About">About</a>
+          <button class="theme-toggle" id="themeToggle" type="button" aria-label="Switch to dark mode" aria-pressed="false"><span class="theme-toggle-icon">☾</span><span class="theme-toggle-text">Dark mode</span></button>
+        </nav>
+        <div class="nav-actions"><div data-auth-area></div><button class="mobile-menu-button" id="menuButton" aria-label="Open menu" aria-expanded="false" aria-controls="navLinks"><span></span></button></div>
+      </div>
+    </header>
+    <main id="main">
+      <section class="section section-alt store-page-section" id="storeListSection">
+        <div class="container">
+          <div class="section-head">
+            <div>
+              <p class="section-kicker">Medical Equipment</p>
+              <h1 class="section-title">Buy medical equipment online</h1>
+              <p class="section-copy">Browse medical equipment, check price and stock, then log in to order or add items to your cart.</p>
+            </div>
+          </div>
+          <div class="store-grid" id="storeGrid"><div class="loading-state">Loading products...</div></div>
+        </div>
+      </section>
+      <section class="section section-alt product-detail-section" id="productDetailSection" hidden>
+        <div class="container">
+          <div class="section-head">
+            <div>
+              <p class="section-kicker">Medical Equipment</p>
+              <h1 class="section-title">Product details</h1>
+              <p class="section-copy">Check price, delivery charge, stock, description and customer reviews.</p>
+            </div>
+          </div>
+          <div id="productDetailPage"><div class="loading-state">Loading product information...</div></div>
+        </div>
+      </section></main>
+    <footer class="site-footer"><div class="container footer-grid"><div class="brand"><img src="/assets/img/logo.png" alt="" width="44" height="44" loading="lazy" /><span><span class="brand-mark" data-site-name>Medicare At Home</span><span class="brand-subtitle" data-footer-location>Sultanpur, Feni, Bangladesh</span></span></div><p class="footer-credit">Made With <span aria-hidden="true">❤️‍🩹</span> By <a href="https://t.me/Ch0wdhury_Siam" target="_blank" rel="noopener noreferrer">Siam Chowdhury</a></p></div></footer>
+    </div>
+    <div class="toast" id="toast" aria-live="polite" aria-atomic="true"></div>
+    <script type="module" src="/assets/js/main.js?v=typography-spacing-fix-v5"></script>
+    <script type="module" src="/assets/js/store.js?v=typography-spacing-fix-v5"></script>
+  </body>
+</html>

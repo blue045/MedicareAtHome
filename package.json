@@ -1,0 +1,13 @@
+{
+  "name": "medicare-at-home-cloudflare",
+  "version": "1.0.1",
+  "private": true,
+  "type": "module",
+  "description": "Fast medical home-service website with Cloudflare Pages Functions and Turso database.",
+  "scripts": {
+    "check": "node ./scripts/check-files.js"
+  },
+  "dependencies": {
+    "@libsql/client": "^0.17.3"
+  }
+}

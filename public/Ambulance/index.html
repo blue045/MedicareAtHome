@@ -1,0 +1,111 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="theme-color" content="#f6f7fb" />
+    <meta name="description" content="Order ambulance support from Medicare At Home." />
+    <link rel="manifest" href="/manifest.json" />
+    <script>
+      (function () {
+        try {
+          var savedTheme = localStorage.getItem("medicare-theme");
+          document.documentElement.dataset.theme = savedTheme === "dark" ? "dark" : "light";
+        } catch (error) {
+          document.documentElement.dataset.theme = "light";
+        }
+      })();
+    </script>
+    <link rel="preload" href="/assets/css/styles.css?v=typography-spacing-fix-v5" as="style" />
+    <link rel="stylesheet" href="/assets/css/styles.css?v=typography-spacing-fix-v5" />
+    <link rel="icon" href="/assets/img/logo.png" type="image/png" />
+    <title>Ambulance | Medicare At Home</title>
+  </head>
+  <body data-page-title="Ambulance">
+    <a class="skip-link" href="#main">Skip to content</a>
+
+    <div class="public-site-frame">
+      <header class="site-header">
+      <div class="container navbar">
+        <a class="brand" href="/" aria-label="Medicare At Home home">
+          <img src="/assets/img/logo.png" alt="" width="44" height="44" />
+          <span>
+            <span class="brand-mark" data-site-name>Medicare At Home</span>
+            <span class="brand-subtitle">Home Visit Medical Care</span>
+          </span>
+        </a>
+
+        <nav class="nav-links" id="navLinks" aria-label="Main navigation">
+          <a href="/Services">Services</a>
+          <a href="/Store">Store</a>
+          <a href="/Doctors">Doctors</a>
+          <a class="is-active" href="/Ambulance">Ambulance</a>
+          <a href="/Blood">Blood</a>
+          <a href="/Contact">Contact</a>
+          <a href="/About">About</a>
+          <button class="theme-toggle" id="themeToggle" type="button" aria-label="Switch to dark mode" aria-pressed="false"><span class="theme-toggle-icon">☾</span><span class="theme-toggle-text">Dark mode</span></button>
+        </nav>
+
+        <div class="nav-actions">
+          <a class="btn btn-secondary" data-ambulance-call href="tel:+8801609672748">Call Ambulance</a>
+          <div data-auth-area></div>
+          <button class="mobile-menu-button" id="menuButton" aria-label="Open menu" aria-expanded="false" aria-controls="navLinks">
+            <span></span>
+          </button>
+        </div>
+      </div>
+    </header>
+
+    <main id="main">
+      <section class="section section-alt ambulance-section" id="ambulancePage">
+        <div class="container contact-grid ambulance-grid">
+          <article class="contact-card ambulance-hero-card">
+            <p class="section-kicker">Ambulance</p>
+            <h1 class="section-title" data-editable-page-title>Need an ambulance?</h1>
+            <p class="section-copy" data-editable-page-copy>Call or message us for ambulance support. Share patient condition, pickup location and destination.</p>
+            <p class="notice" data-ambulance-description>Fast ambulance contact support for Medicare At Home visitors. Use the call button for urgent help or WhatsApp to send pickup details.</p>
+            <div class="ambulance-contact-card">
+              <span>Ambulance contact</span>
+              <strong data-ambulance-phone>+8801609672748</strong>
+            </div>
+            <div class="hero-actions">
+              <a class="btn btn-primary" data-ambulance-call href="tel:+8801609672748">Call Now</a>
+              <a class="btn btn-ghost" data-ambulance-whatsapp href="https://wa.me/8801609672748" target="_blank" rel="noopener noreferrer">WhatsApp</a>
+            </div>
+          </article>
+
+          <article class="panel-card ambulance-form-card">
+            <p class="section-kicker">Request Form</p>
+            <h2>Send ambulance details to admin</h2>
+            <form id="ambulanceRequestForm" class="form-grid">
+              <div class="form-group full"><label for="ambulanceName">Full Name *</label><input class="form-input" id="ambulanceName" required placeholder="Your name" /></div>
+              <div class="form-group full"><label for="ambulancePhone">Phone Number *</label><input class="form-input" id="ambulancePhone" required placeholder="01XXXXXXXXX" /></div>
+              <div class="form-group full"><label for="ambulancePickup">Pickup Location *</label><textarea class="form-textarea" id="ambulancePickup" required placeholder="House, road, area, city"></textarea><button class="small-btn location-auto-button" type="button" data-use-current-location data-location-target="#ambulancePickup">Use my current location</button><small class="form-help">Tap to auto-fill the pickup address. If permission is denied, allow Location from browser site settings or type manually.</small></div>
+              <div class="form-group full"><label for="ambulanceDestination">Destination</label><input class="form-input" id="ambulanceDestination" placeholder="Hospital or destination" /></div>
+              <div class="form-group full"><label for="ambulanceCondition">Patient Condition</label><textarea class="form-textarea" id="ambulanceCondition" placeholder="Shortly describe the condition"></textarea></div>
+              <button class="btn btn-primary btn-block full" type="submit">Send Request</button>
+            </form>
+          </article>
+        </div>
+      </section>
+    </main>
+
+    <footer class="site-footer">
+      <div class="container footer-grid">
+        <div class="brand">
+          <img src="/assets/img/logo.png" alt="" width="44" height="44" loading="lazy" />
+          <span>
+            <span class="brand-mark" data-site-name>Medicare At Home</span>
+            <span class="brand-subtitle" data-footer-location>Sultanpur, Feni, Bangladesh</span>
+          </span>
+        </div>
+        <p class="footer-credit">Made With <span aria-hidden="true">❤️‍🩹</span> By <a href="https://t.me/Ch0wdhury_Siam" target="_blank" rel="noopener noreferrer">Siam Chowdhury</a></p>
+      </div>
+      </footer>
+    </div>
+
+    <div class="toast" id="toast" aria-live="polite" aria-atomic="true"></div>
+    <script type="module" src="/assets/js/main.js?v=typography-spacing-fix-v5"></script>
+    <script type="module" src="/assets/js/store.js?v=typography-spacing-fix-v5"></script>
+  </body>
+</html>

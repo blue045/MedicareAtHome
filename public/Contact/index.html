@@ -1,0 +1,109 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="theme-color" content="#f6f7fb" />
+    <meta name="description" content="Medicare At Home provides professional home visit medical services. Contact doctors through phone or WhatsApp." />
+    <link rel="manifest" href="/manifest.json" />
+    <script>
+      (function () {
+        try {
+          var savedTheme = localStorage.getItem("medicare-theme");
+          document.documentElement.dataset.theme = savedTheme === "dark" ? "dark" : "light";
+        } catch (error) {
+          document.documentElement.dataset.theme = "light";
+        }
+      })();
+    </script>
+    <link rel="preload" href="/assets/css/styles.css?v=typography-spacing-fix-v5" as="style" />
+    <link rel="stylesheet" href="/assets/css/styles.css?v=typography-spacing-fix-v5" />
+    <link rel="icon" href="/assets/img/logo.png" type="image/png" />
+    <title>Contact | Medicare At Home</title>
+  </head>
+  <body data-page-title="Contact">
+    <a class="skip-link" href="#main">Skip to content</a>
+
+    <div class="public-site-frame">
+      <header class="site-header">
+      <div class="container navbar">
+        <a class="brand" href="/" aria-label="Medicare At Home home">
+          <img src="/assets/img/logo.png" alt="" width="44" height="44" />
+          <span>
+            <span class="brand-mark" data-site-name>Medicare At Home</span>
+            <span class="brand-subtitle">Home Visit Medical Care</span>
+          </span>
+        </a>
+
+        <nav class="nav-links" id="navLinks" aria-label="Main navigation">
+          <a href="/Services">Services</a>
+          <a href="/Store">Store</a>
+          <a href="/Doctors">Doctors</a>
+          <a href="/Ambulance">Ambulance</a>
+          <a href="/Blood">Blood</a>
+          <a class="is-active" href="/Contact">Contact</a>
+          <a href="/About">About</a>
+          <button class="theme-toggle" id="themeToggle" type="button" aria-label="Switch to dark mode" aria-pressed="false"><span class="theme-toggle-icon">☾</span><span class="theme-toggle-text">Dark mode</span></button>
+        </nav>
+
+        <div class="nav-actions">
+          <a class="btn btn-secondary" data-whatsapp-link href="/Contact">Book Visit</a>
+          <div data-auth-area></div>
+          <button class="mobile-menu-button" id="menuButton" aria-label="Open menu" aria-expanded="false" aria-controls="navLinks">
+            <span></span>
+          </button>
+        </div>
+      </div>
+    </header>
+
+    <main id="main">
+      <section class="section section-alt" id="contact">
+        <div class="container contact-grid">
+          <article class="contact-card">
+            <p class="section-kicker">Contact</p>
+            <h1 class="section-title">Need service today?</h1>
+            <p class="section-copy">Use WhatsApp for the fastest booking. For emergency conditions, call local emergency services first.</p>
+            <div class="contact-list" id="contactList"></div>
+          </article>
+
+          <article class="panel-card">
+            <p class="section-kicker">Before booking</p>
+            <h3>Send these details on WhatsApp</h3>
+            <div class="tags">
+              <span class="tag">Patient name</span>
+              <span class="tag">Service needed</span>
+              <span class="tag">Full address</span>
+              <span class="tag">Preferred time</span>
+              <span class="tag">Phone number</span>
+            </div>
+            <p class="notice" data-emergency-note>
+              This website is for home visit medical service contact. For life-threatening emergencies, contact your nearest hospital or emergency hotline immediately.
+            </p>
+            <div class="hero-actions">
+              <a class="btn btn-primary" data-whatsapp-link href="#">Open WhatsApp</a>
+              <a class="btn btn-ghost" data-primary-phone-link href="#">Call Service</a>
+            </div>
+          </article>
+        </div>
+      </section>
+    </main>
+
+    <footer class="site-footer">
+      <div class="container footer-grid">
+        <div class="brand">
+          <img src="/assets/img/logo.png" alt="" width="44" height="44" loading="lazy" />
+          <span>
+            <span class="brand-mark" data-site-name>Medicare At Home</span>
+            <span class="brand-subtitle" data-footer-location>Sultanpur, Feni, Bangladesh</span>
+          </span>
+        </div>
+        <p class="footer-credit">Made With <span aria-hidden="true">❤️‍🩹</span> By <a href="https://t.me/Ch0wdhury_Siam" target="_blank" rel="noopener noreferrer">Siam Chowdhury</a></p>
+      </div>
+      </footer>
+    </div>
+
+    <div class="toast" id="toast" aria-live="polite" aria-atomic="true"></div>
+    <script type="module" src="/assets/js/main.js?v=typography-spacing-fix-v5"></script>
+    <script type="module" src="/assets/js/store.js?v=typography-spacing-fix-v5"></script>
+  </body>
+</html>

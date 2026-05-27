@@ -1,0 +1,134 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="theme-color" content="#f6f7fb" />
+    <meta name="description" content="Submit blood information for Medicare At Home." />
+    <link rel="manifest" href="/manifest.json" />
+    <script>
+      (function () {
+        try {
+          var savedTheme = localStorage.getItem("medicare-theme");
+          document.documentElement.dataset.theme = savedTheme === "dark" ? "dark" : "light";
+        } catch (error) {
+          document.documentElement.dataset.theme = "light";
+        }
+      })();
+    </script>
+    <link rel="preload" href="/assets/css/styles.css?v=typography-spacing-fix-v5" as="style" />
+    <link rel="stylesheet" href="/assets/css/styles.css?v=typography-spacing-fix-v5" />
+    <link rel="icon" href="/assets/img/logo.png" type="image/png" />
+    <title>Add Blood Information | Medicare At Home</title>
+  </head>
+  <body data-page-title="Add Blood Information">
+    <a class="skip-link" href="#main">Skip to content</a>
+
+    <div class="public-site-frame">
+      <header class="site-header">
+      <div class="container navbar">
+        <a class="brand" href="/" aria-label="Medicare At Home home">
+          <img src="/assets/img/logo.png" alt="" width="44" height="44" />
+          <span>
+            <span class="brand-mark" data-site-name>Medicare At Home</span>
+            <span class="brand-subtitle">Home Visit Medical Care</span>
+          </span>
+        </a>
+        <nav class="nav-links" id="navLinks" aria-label="Main navigation">
+          <a href="/Services">Services</a>
+          <a href="/Store">Store</a>
+          <a href="/Doctors">Doctors</a>
+          <a href="/Ambulance">Ambulance</a>
+          <a class="is-active" href="/Blood">Blood</a>
+          <a href="/Contact">Contact</a>
+          <a href="/About">About</a>
+          <button class="theme-toggle" id="themeToggle" type="button" aria-label="Switch to dark mode" aria-pressed="false"><span class="theme-toggle-icon">☾</span><span class="theme-toggle-text">Dark mode</span></button>
+        </nav>
+        <div class="nav-actions">
+          <a class="btn btn-secondary" href="/Blood">Blood List</a>
+          <div data-auth-area></div>
+          <button class="mobile-menu-button" id="menuButton" aria-label="Open menu" aria-expanded="false" aria-controls="navLinks"><span></span></button>
+        </div>
+      </div>
+    </header>
+
+    <main id="main">
+      <section class="section section-alt blood-section">
+        <div class="container narrow-container">
+          <div class="section-head">
+            <div>
+              <p class="section-kicker">Blood form</p>
+              <h1 class="section-title">Add your information</h1>
+              <p class="section-copy">Your profile will be hidden until admin approval. Female contact details will stay hidden from visitors.</p>
+            </div>
+          </div>
+          <article class="admin-card public-form-card">
+            <form id="bloodSubmitForm" class="form-grid">
+              <div class="form-group full">
+                <label for="bloodFullName">Full Name *</label>
+                <input class="form-input" id="bloodFullName" required placeholder="Your full name" />
+              </div>
+              <div class="form-group">
+                <label for="bloodGroup">Blood Group *</label>
+                <select class="form-input" id="bloodGroup" required>
+                  <option value="">Select blood group</option>
+                  <option>A+</option><option>A-</option><option>B+</option><option>B-</option>
+                  <option>AB+</option><option>AB-</option><option>O+</option><option>O-</option>
+                </select>
+              </div>
+              <div class="form-group">
+                <label for="bloodGender">Gender *</label>
+                <select class="form-input" id="bloodGender" required>
+                  <option value="">Select gender</option>
+                  <option value="male">Male</option>
+                  <option value="female">Female</option>
+                  <option value="other">Other</option>
+                </select>
+              </div>
+              <div class="form-group full hidden" id="customGenderGroup">
+                <label for="bloodCustomGender">Type Gender *</label>
+                <input class="form-input" id="bloodCustomGender" placeholder="Type your gender" />
+              </div>
+              <div class="form-group">
+                <label for="bloodPhone">Phone *</label>
+                <input class="form-input" id="bloodPhone" required placeholder="01609672748" />
+              </div>
+              <div class="form-group">
+                <label for="bloodWhatsapp">WhatsApp *</label>
+                <input class="form-input" id="bloodWhatsapp" required placeholder="8801609672748" />
+              </div>
+              <div class="form-group full">
+                <label for="bloodHomeAddress">Home Address *</label>
+                <textarea class="form-textarea" id="bloodHomeAddress" required placeholder="Write your full home address"></textarea>
+                <button class="small-btn location-auto-button" type="button" data-use-current-location data-location-target="#bloodHomeAddress">Use my current location</button>
+                <small class="form-help">Tap to auto-fill your address. If permission is denied, allow Location from browser site settings or type manually.</small>
+              </div>
+              <div class="form-actions full">
+                <button class="btn btn-primary" type="submit">Submit for Approval</button>
+                <a class="btn btn-ghost" href="/Blood">Back to Blood List</a>
+              </div>
+            </form>
+          </article>
+        </div>
+      </section>
+    </main>
+
+    <footer class="site-footer">
+      <div class="container footer-grid">
+        <div class="brand">
+          <img src="/assets/img/logo.png" alt="" width="44" height="44" loading="lazy" />
+          <span>
+            <span class="brand-mark" data-site-name>Medicare At Home</span>
+            <span class="brand-subtitle" data-footer-location>Sultanpur, Feni, Bangladesh</span>
+          </span>
+        </div>
+        <p class="footer-credit">Made With <span aria-hidden="true">❤️‍🩹</span> By <a href="https://t.me/Ch0wdhury_Siam" target="_blank" rel="noopener noreferrer">Siam Chowdhury</a></p>
+      </div>
+      </footer>
+    </div>
+
+    <div class="toast" id="toast" aria-live="polite" aria-atomic="true"></div>
+    <script type="module" src="/assets/js/main.js?v=typography-spacing-fix-v5"></script>
+    <script type="module" src="/assets/js/store.js?v=typography-spacing-fix-v5"></script>
+  </body>
+</html>

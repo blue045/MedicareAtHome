@@ -1,0 +1,654 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="theme-color" content="#f6f7fb" />
+    <meta name="robots" content="noindex,nofollow" />
+    <title>Master Admin | Medicare At Home</title>
+    <script>
+      (function () {
+        try {
+          var savedTheme = localStorage.getItem("medicare-theme");
+          document.documentElement.dataset.theme = savedTheme === "dark" ? "dark" : "light";
+        } catch (error) {
+          document.documentElement.dataset.theme = "light";
+        }
+      })();
+    </script>
+    <link rel="stylesheet" href="/assets/css/styles.css?v=typography-spacing-fix-v5" />
+    <link rel="icon" href="/assets/img/logo.png" type="image/png" />
+  </head>
+  <body class="superuser-body">
+    <main class="admin-shell">
+      <section class="login-card" id="loginView">
+        <a class="brand" href="/su">
+          <img src="/assets/img/logo.png" alt="" width="44" height="44" />
+          <span>
+            <span class="brand-mark">Medicare At Home</span>
+            <span class="brand-subtitle" data-admin-panel-subtitle>Master Admin Panel</span>
+          </span>
+        </a>
+        <h1 data-login-title>Admin login</h1>
+        <p class="section-copy" data-login-copy>Use your admin password to manage the website, doctors, services and contact information.</p>
+        <form id="loginForm" class="form-grid" autocomplete="on">
+          <div class="form-group full hidden" id="subAdminLoginFields">
+            <label for="adminUsername">Sub-Admin Username</label>
+            <input class="form-input" id="adminUsername" name="username" autocomplete="username" placeholder="Enter sub-admin username" />
+          </div>
+          <div class="form-group full">
+            <label for="adminPassword" id="masterAdminPasswordLabel">Admin Password</label>
+            <input class="form-input" id="adminPassword" name="password" type="password" required autocomplete="current-password" placeholder="Enter password" />
+          </div>
+          <button class="btn btn-primary btn-block" type="submit">Login</button>
+        </form>
+      </section>
+
+      <section class="admin-layout hidden" id="adminView">
+        <header class="site-header admin-site-header">
+          <div class="container navbar admin-navbar">
+            <a class="brand" href="/su" data-admin-brand aria-label="Medicare At Home superuser panel">
+              <img src="/assets/img/logo.png" alt="" width="44" height="44" />
+              <span>
+                <span class="brand-mark">Medicare At Home</span>
+                <span class="brand-subtitle" data-admin-panel-subtitle>Master Admin Panel</span>
+              </span>
+            </a>
+
+            <div class="nav-actions admin-header-actions">
+              <button class="theme-toggle" id="adminThemeToggle" type="button" aria-label="Toggle dark mode" aria-pressed="false"><span class="theme-toggle-icon">☾</span><span class="theme-toggle-text">Dark mode</span></button>
+              <a class="btn btn-ghost admin-view-site" href="/" target="_blank" rel="noopener noreferrer">View Site</a>
+              <button class="btn btn-secondary admin-menu-toggle" id="adminMenuButton" type="button" aria-controls="adminSidebar" aria-expanded="false"><span class="admin-menu-icon" aria-hidden="true">☰</span><span class="admin-menu-text">Menu</span></button>
+            </div>
+          </div>
+        </header>
+
+        <button class="admin-menu-overlay" id="adminMenuOverlay" type="button" aria-label="Close admin menu"></button>
+        <aside class="admin-sidebar" id="adminSidebar">
+          <a class="sidebar-logo" href="/su" data-admin-brand>
+            <img src="/assets/img/logo.png" alt="" width="38" height="38" />
+            <span>MediControl</span>
+          </a>
+          <nav class="sidebar-group" aria-label="Admin navigation">
+            <span class="sidebar-label">Manage</span>
+            <a class="sidebar-link is-active" href="/su" data-admin-nav="dashboard" data-permission="dashboard"><span>⌂</span>Dashboard</a>
+            <a class="sidebar-link" href="/su/main" data-admin-nav="main" data-permission="main"><span>▣</span>Main Page</a>
+            <a class="sidebar-link" href="/su/services" data-admin-nav="services" data-permission="services"><span>✚</span>Services</a>
+            <a class="sidebar-link" href="/su/products" data-admin-nav="products" data-permission="products"><span>🛒</span>Add Products</a>
+            <a class="sidebar-link" href="/su/orders" data-admin-nav="orders" data-permission="orders"><span>📦</span>Order Details</a>
+            <a class="sidebar-link" href="/su/store-users" data-admin-nav="store-users" data-permission="store-users"><span>👤</span>User Login Information</a>
+            <a class="sidebar-link" href="/su/reviews" data-admin-nav="comments" data-permission="comments"><span>💬</span>User Reviews</a>
+            <a class="sidebar-link" href="/su/doctors" data-admin-nav="doctors" data-permission="doctors"><span>☤</span>Doctors</a>
+            <a class="sidebar-link" href="/su/ambulance" data-admin-nav="ambulance" data-permission="ambulance"><span>🚑</span>Ambulance</a>
+            <a class="sidebar-link" href="/su/blood" data-admin-nav="blood" data-permission="blood"><span>🩸</span>Blood</a>
+            <a class="sidebar-link" href="/su/content" data-admin-nav="content" data-permission="content"><span>✎</span>Content Pages</a>
+            <a class="sidebar-link" href="/su/about" data-admin-nav="about" data-permission="content"><span>★</span>About & Blog</a>
+            <a class="sidebar-link" href="/su/sub-admins" data-admin-nav="sub-admins" data-master-only><span>🔐</span>Sub-Admins</a>
+            <a class="sidebar-link" href="/su/contact" data-admin-nav="contact" data-permission="contact"><span>☎</span>Contact Settings</a>
+            <a class="sidebar-link" href="/" target="_blank" rel="noopener noreferrer"><span>↗</span>View Site</a>
+            <button class="sidebar-link sidebar-logout-button" id="logoutButton" data-logout-button type="button"><span>⏻</span>Logout</button>
+          </nav>
+          <div class="sidebar-card">
+            <strong>Medicare PRO</strong>
+            <p>Control the public website from separate clean admin pages.</p>
+          </div>
+        </aside>
+
+        <div class="admin-main">
+          <div class="admin-topbar">
+            <div>
+              <p class="section-kicker" data-admin-panel-subtitle>Master Admin Panel</p>
+              <h1 id="adminCurrentPageTitle">Dashboard</h1>
+            </div>
+            <button class="btn btn-ghost admin-back-button" id="adminBackButton" type="button" aria-label="Go back to the previous admin page">← Back</button>
+          </div>
+
+          <section class="admin-page is-active" data-admin-page="dashboard">
+            <div class="admin-metrics" aria-label="Admin metrics">
+              <article class="stat-card"><span>Total doctors</span><strong id="adminTotalDoctors">—</strong></article>
+              <article class="stat-card"><span>Pending blood</span><strong id="adminPendingBlood">—</strong></article>
+              <article class="stat-card"><span>Store products</span><strong id="adminTotalProducts">—</strong></article>
+              <article class="stat-card"><span>Pending orders</span><strong id="adminPendingOrders">—</strong></article>
+            </div>
+
+            <div class="admin-dashboard-grid">
+              <article class="admin-card admin-welcome-card">
+                <p class="section-kicker">Quick guide</p>
+                <h2>Manage everything from one clean panel</h2>
+                <p class="section-copy">Use the header Menu or the shortcuts below to edit the homepage, page content, doctor profiles, blood approvals, products, orders, reviews and contact numbers. Doctor and service changes stay pending until you press Save Changes.</p>
+                <div class="quick-actions admin-quick-guide-actions">
+                  <a class="btn btn-primary" href="/su" data-admin-nav="dashboard" data-permission="dashboard">Dashboard</a>
+                  <a class="btn btn-ghost" href="/su/main" data-admin-nav="main" data-permission="main">Main Page</a>
+                  <a class="btn btn-ghost" href="/su/services" data-admin-nav="services" data-permission="services">Edit Services</a>
+                  <a class="btn btn-ghost" href="/su/products" data-admin-nav="products" data-permission="products">Add Products</a>
+                  <a class="btn btn-ghost" href="/su/orders" data-admin-nav="orders" data-permission="orders">Order Details</a>
+                  <a class="btn btn-ghost" href="/su/store-users" data-admin-nav="store-users" data-permission="store-users">User Login Information</a>
+                  <a class="btn btn-ghost" href="/su/reviews" data-admin-nav="comments" data-permission="comments">User Reviews</a>
+                  <a class="btn btn-ghost" href="/su/doctors" data-admin-nav="doctors" data-permission="doctors">Manage Doctors</a>
+                  <a class="btn btn-ghost" href="/su/ambulance" data-admin-nav="ambulance" data-permission="ambulance">Ambulance</a>
+                  <a class="btn btn-ghost" href="/su/blood" data-admin-nav="blood" data-permission="blood">Blood Approval</a>
+                  <a class="btn btn-ghost" href="/su/content" data-admin-nav="content" data-permission="content">Content Pages</a>
+                  <a class="btn btn-ghost" href="/su/contact" data-admin-nav="contact" data-permission="contact">Contact Settings</a>
+                  <a class="btn btn-secondary" href="/" target="_blank" rel="noopener noreferrer">View Site</a>
+                  <button class="btn btn-danger" data-logout-button type="button">Logout</button>
+                </div>
+              </article>
+              <article class="admin-card">
+                <p class="section-kicker">Safety</p>
+                <h2>Hidden admin area</h2>
+                <p class="section-copy">This panel is not linked from the public website. Keep your admin password and token private.</p>
+              </article>
+            </div>
+          </section>
+
+          <section class="admin-page" data-admin-page="main">
+            <section class="admin-card main-page-card">
+              <p class="section-kicker">Main Page</p>
+              <h2>Edit homepage content</h2>
+              <p class="section-copy">Change the hero title, description, buttons and homepage stat cards.</p>
+              <form id="mainPageForm" class="form-grid">
+                <div class="form-group full">
+                  <label for="siteName">Website Name</label>
+                  <input class="form-input" id="siteName" placeholder="Medicare At Home" />
+                </div>
+                <div class="form-group">
+                  <label for="heroHighlight">Main Title Highlight</label>
+                  <input class="form-input" id="heroHighlight" placeholder="Medical care" />
+                </div>
+                <div class="form-group">
+                  <label for="heroTitleLine">Main Title Second Line</label>
+                  <input class="form-input" id="heroTitleLine" placeholder="at your home." />
+                </div>
+                <div class="form-group full">
+                  <label for="description">Main Page Description</label>
+                  <textarea class="form-textarea" id="description" placeholder="Write the homepage description."></textarea>
+                </div>
+                <div class="form-group">
+                  <label for="primaryButtonText">WhatsApp Button Text</label>
+                  <input class="form-input" id="primaryButtonText" placeholder="WhatsApp Appointment" />
+                </div>
+                <div class="form-group">
+                  <label for="secondaryButtonText">Doctors Button Text</label>
+                  <input class="form-input" id="secondaryButtonText" placeholder="View Doctors" />
+                </div>
+                <div class="form-group">
+                  <label for="servicesButtonText">Services Button Text</label>
+                  <input class="form-input" id="servicesButtonText" placeholder="Services" />
+                </div>
+                <div class="form-group">
+                  <label for="contactButtonText">Contact Button Text</label>
+                  <input class="form-input" id="contactButtonText" placeholder="Contact" />
+                </div>
+                <div class="form-group full">
+                  <label for="statsSetting">Homepage Stat Cards</label>
+                  <textarea class="form-textarea" id="statsSetting" placeholder="24/7 | Contact support&#10;5+ | Home care services&#10;3 | Contact numbers&#10;Fast | WhatsApp response"></textarea>
+                  <small class="form-help">Write one stat per line using: value | label</small>
+                </div>
+                <div class="form-actions full">
+                  <button class="btn btn-primary" type="submit">Save Main Page</button>
+                </div>
+              </form>
+            </section>
+          </section>
+
+          <section class="admin-page" data-admin-page="content">
+            <section class="admin-card main-page-card">
+              <p class="section-kicker">Content Pages</p>
+              <h2>Edit website page titles and navigation</h2>
+              <p class="section-copy">Use this section to edit the text shown on public pages without touching code.</p>
+              <form id="contentPageForm" class="form-grid">
+                <div class="form-group"><label for="navServicesLabel">Services Nav Label</label><input class="form-input" id="navServicesLabel" placeholder="Services" /></div>
+                <div class="form-group"><label for="navStoreLabel">Store Nav Label</label><input class="form-input" id="navStoreLabel" placeholder="Store" /></div>
+                <div class="form-group"><label for="navDoctorsLabel">Doctors Nav Label</label><input class="form-input" id="navDoctorsLabel" placeholder="Doctors" /></div>
+                <div class="form-group"><label for="navAmbulanceLabel">Ambulance Nav Label</label><input class="form-input" id="navAmbulanceLabel" placeholder="Ambulance" /></div>
+                <div class="form-group"><label for="navBloodLabel">Blood Nav Label</label><input class="form-input" id="navBloodLabel" placeholder="Blood" /></div>
+                <div class="form-group"><label for="navHowItWorksLabel">About Nav Label</label><input class="form-input" id="navHowItWorksLabel" placeholder="About" /></div>
+                <div class="form-group"><label for="navContactLabel">Contact Nav Label</label><input class="form-input" id="navContactLabel" placeholder="Contact" /></div>
+
+                <div class="form-group"><label for="servicesPageTitle">Services Page Title</label><input class="form-input" id="servicesPageTitle" /></div>
+                <div class="form-group"><label for="servicesPageCopy">Services Page Description</label><textarea class="form-textarea" id="servicesPageCopy"></textarea></div>
+                <div class="form-group"><label for="storePageTitle">Store Page Title</label><input class="form-input" id="storePageTitle" /></div>
+                <div class="form-group"><label for="storePageCopy">Store Page Description</label><textarea class="form-textarea" id="storePageCopy"></textarea></div>
+                <div class="form-group"><label for="doctorsPageTitle">Doctors Page Title</label><input class="form-input" id="doctorsPageTitle" /></div>
+                <div class="form-group"><label for="doctorsPageCopy">Doctors Page Description</label><textarea class="form-textarea" id="doctorsPageCopy"></textarea></div>
+                <div class="form-group"><label for="ambulancePageTitle">Ambulance Page Title</label><input class="form-input" id="ambulancePageTitle" /></div>
+                <div class="form-group"><label for="ambulancePageCopy">Ambulance Page Description</label><textarea class="form-textarea" id="ambulancePageCopy"></textarea></div>
+                <div class="form-group"><label for="bloodPageTitle">Blood Page Title</label><input class="form-input" id="bloodPageTitle" /></div>
+                <div class="form-group"><label for="bloodPageCopy">Blood Page Description</label><textarea class="form-textarea" id="bloodPageCopy"></textarea></div>
+                <div class="form-group"><label for="howPageTitle">About Page Title</label><input class="form-input" id="howPageTitle" /></div>
+                <div class="form-group"><label for="howPageCopy">About Page Description</label><textarea class="form-textarea" id="howPageCopy"></textarea></div>
+                <div class="form-group"><label for="contactPageTitle">Contact Page Title</label><input class="form-input" id="contactPageTitle" /></div>
+                <div class="form-group"><label for="contactPageCopy">Contact Page Description</label><textarea class="form-textarea" id="contactPageCopy"></textarea></div>
+                <div class="form-group"><label for="loginPageTitle">Login Page Title</label><input class="form-input" id="loginPageTitle" /></div>
+                <div class="form-group"><label for="loginPageCopy">Login Page Description</label><textarea class="form-textarea" id="loginPageCopy"></textarea></div>
+                <div class="form-group"><label for="signupPageTitle">Signup Page Title</label><input class="form-input" id="signupPageTitle" /></div>
+                <div class="form-group"><label for="signupPageCopy">Signup Page Description</label><textarea class="form-textarea" id="signupPageCopy"></textarea></div>
+                <div class="form-group"><label for="profilePageTitle">Profile Page Title</label><input class="form-input" id="profilePageTitle" /></div>
+                <div class="form-group"><label for="profilePageCopy">Profile Page Description</label><textarea class="form-textarea" id="profilePageCopy"></textarea></div>
+                <div class="form-actions full"><button class="btn btn-primary" type="submit">Save Page Content</button></div>
+              </form>
+            </section>
+          </section>
+
+          <section class="admin-page" data-admin-page="doctors">
+            <div class="admin-grid doctors-admin-grid">
+              <section class="admin-card doctor-form-card">
+                <p class="section-kicker">Doctors</p>
+                <h2 id="doctorFormTitle">Add doctor</h2>
+                <p class="section-copy">Fill the information that patients should see on the public doctor page, including designation and chamber location.</p>
+                <form id="doctorForm" class="form-grid">
+                  <input type="hidden" id="doctorId" />
+
+                  <div class="form-group full">
+                    <label for="name">Doctor Name *</label>
+                    <input class="form-input" id="name" required placeholder="Example: Dr. Rahman" />
+                  </div>
+
+                  <div class="form-group">
+                    <label for="designation">Designation *</label>
+                    <select class="form-input" id="designation" required>
+                      <option value="">Select designation</option>
+                      <option value="Professor">Professor</option>
+                      <option value="Associate Professor">Associate Professor</option>
+                      <option value="Assistant Professor">Assistant Professor</option>
+                      <option value="Consultant">Consultant</option>
+                    </select>
+                  </div>
+
+                  <div class="form-group">
+                    <label for="specialty">Specialty *</label>
+                    <input class="form-input" id="specialty" required placeholder="Example: General Physician" />
+                  </div>
+
+                  <div class="form-group">
+                    <label for="degrees">Degrees</label>
+                    <input class="form-input" id="degrees" placeholder="MBBS, FCPS..." />
+                  </div>
+
+
+                  <div class="form-group">
+                    <label for="hospital">Hospital / Organization</label>
+                    <input class="form-input" id="hospital" placeholder="Medicare At Home" />
+                  </div>
+
+                  <div class="form-group full">
+                    <label>Chamber Location & Weekdays *</label>
+                    <p class="form-help">Add one or more chamber locations. Type the location manually, then choose the weekday, starting time and ending time.</p>
+                    <div class="chamber-list" id="chamberList"></div>
+                    <button class="small-btn" id="addChamberButton" type="button">+ Add Chamber Location</button>
+                  </div>
+
+                  <div class="form-group full">
+                    <label>Phone & WhatsApp</label>
+                    <div class="fixed-contact-note">New doctor profiles use <strong>+8801609672748</strong> automatically.</div>
+                  </div>
+
+
+                  <div class="form-group">
+                    <label for="sortOrder">Sort Order</label>
+                    <input class="form-input" id="sortOrder" type="number" min="0" placeholder="1" />
+                  </div>
+
+                  <div class="form-group full">
+                    <label for="photoUpload">Doctor Photo</label>
+                    <div class="photo-upload-box">
+                      <input class="form-input" id="photoUpload" type="file" accept="image/jpeg,image/png,image/webp" />
+                      <input id="photoUrl" type="hidden" />
+                      <div class="photo-preview" id="photoPreview">No photo selected</div>
+                      <button class="small-btn" id="clearPhotoButton" type="button">Remove Photo</button>
+                    </div>
+                    <small class="form-help">Upload JPG, PNG, or WEBP. The image is compressed in the browser and saved with the doctor profile.</small>
+                  </div>
+
+                  <div class="form-group full">
+                    <label for="bio">Short Bio</label>
+                    <textarea class="form-textarea" id="bio" placeholder="Write a short introduction for patients."></textarea>
+                  </div>
+
+                  <div class="form-group full">
+                    <label class="checkbox-label">
+                      <input id="isActive" type="checkbox" checked /> Show on website
+                    </label>
+                  </div>
+
+                  <div class="form-actions full">
+                    <button class="btn btn-primary" type="submit">Save Doctor</button>
+                    <button class="btn btn-ghost" id="resetDoctorForm" type="button">Reset</button>
+                  </div>
+                </form>
+              </section>
+
+              <section class="admin-card doctor-list-card">
+                <div class="section-head compact-head">
+                  <div>
+                    <p class="section-kicker">Doctor List</p>
+                    <h2 class="section-title">Manage doctors</h2>
+                  </div>
+                </div>
+                <div class="doctor-save-bar">
+                  <span id="doctorChangesStatus">No unsaved doctor changes.</span>
+                  <div class="admin-list-actions">
+                    <button class="small-btn" id="discardDoctorChangesButton" type="button" disabled>Discard</button>
+                    <button class="btn btn-primary" id="saveDoctorChangesButton" type="button" disabled>Save Changes</button>
+                  </div>
+                </div>
+                <div class="admin-list" id="adminDoctorList">
+                  <div class="loading-state">Loading doctors...</div>
+                </div>
+              </section>
+            </div>
+          </section>
+
+          <section class="admin-page" data-admin-page="ambulance">
+            <section class="admin-card">
+              <p class="section-kicker">Ambulance</p>
+              <h2>Edit ambulance feature</h2>
+              <p class="section-copy">These details control the public Ambulance page, call button, WhatsApp button, and default ambulance contact number.</p>
+              <form id="ambulanceSettingsForm" class="form-grid">
+                <div class="form-group">
+                  <label for="ambulanceButtonText">Button Text</label>
+                  <input class="form-input" id="ambulanceButtonText" placeholder="Order Ambulance" />
+                </div>
+                <div class="form-group">
+                  <label for="ambulancePhone">Ambulance Call Number</label>
+                  <input class="form-input" id="ambulancePhone" placeholder="+8801609672748" />
+                </div>
+                <div class="form-group">
+                  <label for="ambulanceWhatsapp">Ambulance WhatsApp Number</label>
+                  <input class="form-input" id="ambulanceWhatsapp" placeholder="+8801609672748" />
+                </div>
+                <div class="form-group full">
+                  <label for="ambulanceDescription">Ambulance Description</label>
+                  <textarea class="form-textarea" id="ambulanceDescription" placeholder="Write the ambulance service details shown on the page."></textarea>
+                </div>
+                <div class="form-actions full">
+                  <button class="btn btn-primary" type="submit">Save Ambulance Settings</button>
+                  <a class="btn btn-ghost" href="/Ambulance" target="_blank" rel="noopener noreferrer">View Ambulance Page</a>
+                </div>
+              </form>
+            </section>
+          </section>
+
+          <section class="admin-page" data-admin-page="blood">
+            <section class="admin-card">
+              <div class="section-head compact-head">
+                <div>
+                  <p class="section-kicker">Blood</p>
+                  <h2 class="section-title">Blood approval</h2>
+                  <p class="section-copy">Approve submitted profiles before they appear on the public Blood page. Female contact details remain protected publicly.</p>
+                </div>
+              </div>
+              <div class="admin-tabs" role="tablist" aria-label="Blood admin tabs">
+                <button class="admin-tab is-active" type="button" data-blood-tab="approved">Listed People</button>
+                <button class="admin-tab" type="button" data-blood-tab="pending"><span class="admin-tab-label">Pending Approval</span> <span class="admin-tab-count" id="pendingBloodCount">0</span></button>
+              </div>
+              <div class="admin-list" id="adminBloodList">
+                <div class="loading-state">Loading blood profiles...</div>
+              </div>
+            </section>
+          </section>
+
+          <section class="admin-page" data-admin-page="bloodDetail">
+            <section class="admin-card">
+              <div class="section-head compact-head admin-detail-head">
+                <div>
+                  <p class="section-kicker">Blood detail</p>
+                  <h2 class="section-title">Person information</h2>
+                  <p class="section-copy">Full blood profile information is visible here inside the superuser panel only.</p>
+                </div>
+                <button class="btn btn-ghost" id="backToBloodListButton" type="button">← Back to Blood List</button>
+              </div>
+              <div id="adminBloodDetail">
+                <div class="loading-state">Loading blood profile...</div>
+              </div>
+            </section>
+          </section>
+
+          <section class="admin-page" data-admin-page="services">
+            <div class="admin-grid services-admin-grid">
+              <section class="admin-card services-admin-card">
+                <p class="section-kicker">Services</p>
+                <h2 id="serviceFormTitle">Add service</h2>
+                <p class="section-copy">Add each home medical service with a name, photo and description. These appear on the homepage and public Services page.</p>
+                <form id="serviceForm" class="form-grid">
+                  <input type="hidden" id="serviceOriginalName" />
+                  <div class="form-group full">
+                    <label for="serviceName">Service Name *</label>
+                    <input class="form-input" id="serviceName" required placeholder="Example: Injection" />
+                  </div>
+                  <div class="form-group full">
+                    <label for="servicePhotoUpload">Service Photo</label>
+                    <div class="photo-upload-box service-photo-upload-box">
+                      <input class="form-input" id="servicePhotoUpload" type="file" accept="image/jpeg,image/png,image/webp" />
+                      <input id="servicePhotoUrl" type="hidden" />
+                      <div class="photo-preview service-photo-preview" id="servicePhotoPreview">No service photo selected</div>
+                      <button class="small-btn" id="clearServicePhotoButton" type="button">Remove Photo</button>
+                    </div>
+                    <small class="form-help">Upload JPG, PNG, or WEBP. The image is compressed in the browser and saved with the service.</small>
+                  </div>
+                  <div class="form-group full">
+                    <label for="serviceDescription">Service Description *</label>
+                    <textarea class="form-textarea" id="serviceDescription" required placeholder="Write what this service includes for patients."></textarea>
+                  </div>
+                  <div class="form-actions full">
+                    <button class="btn btn-primary" type="submit">Save Service</button>
+                    <button class="btn btn-ghost" id="resetServiceForm" type="button">Reset</button>
+                  </div>
+                </form>
+              </section>
+
+              <section class="admin-card service-list-card">
+                <div class="section-head compact-head">
+                  <div>
+                    <p class="section-kicker">Service List</p>
+                    <h2 class="section-title">Manage services</h2>
+                  </div>
+                </div>
+                <p class="section-copy">Edit or delete services below. Nothing is published until you click Save Changes.</p>
+                <div class="doctor-save-bar service-save-bar">
+                  <span id="serviceChangesStatus">No unsaved service changes.</span>
+                  <div class="admin-list-actions">
+                    <button class="small-btn" id="discardServiceChangesButton" type="button" disabled>Discard</button>
+                    <button class="btn btn-primary" id="saveServiceChangesButton" type="button" disabled>Save Changes</button>
+                  </div>
+                </div>
+                <div class="admin-list" id="adminServiceList">
+                  <div class="loading-state">Loading services...</div>
+                </div>
+              </section>
+            </div>
+          </section>
+
+          <section class="admin-page" data-admin-page="products">
+            <div class="admin-grid services-admin-grid">
+              <section class="admin-card services-admin-card">
+                <p class="section-kicker">Store Inventory</p>
+                <h2 id="productFormTitle">Add product</h2>
+                <p class="section-copy">Add Medicine Store or Medical Equipment products with photo, stock, and delivery charges.</p>
+                <form id="productForm" class="form-grid">
+                  <input type="hidden" id="productId" />
+                  <div class="form-group full"><label for="productType">Product Category *</label><select class="form-input" id="productType" required><option value="medicine">Medicine Store</option><option value="equipment">Medical Equipment</option></select></div>
+                  <div class="form-group full"><label for="productName">Product Name *</label><input class="form-input" id="productName" required placeholder="Example: Napa Extra or Blood Pressure Monitor" /></div>
+                  <div class="form-group"><label for="productPrice">Total Price *</label><input class="form-input" id="productPrice" type="number" min="0" step="0.01" required placeholder="120" /><small class="form-help">Enter the full product price shown to customers.</small></div>
+                  <div class="form-group"><label for="productFeniDeliveryCharge">Feni Location Delivery Charge *</label><input class="form-input" id="productFeniDeliveryCharge" type="number" min="0" step="0.01" required placeholder="Example: 40" /><small class="form-help">Default delivery fee shown before customers enter an address.</small></div>
+                  <div class="form-group"><label for="productOutsideFeniDeliveryCharge">Outside Feni Delivery Charge *</label><input class="form-input" id="productOutsideFeniDeliveryCharge" type="number" min="0" step="0.01" required placeholder="Example: 80" /><small class="form-help">Used when the delivery location is not Feni.</small></div>
+                  <div class="form-group"><label for="productStock">Available Stock *</label><input class="form-input" id="productStock" type="number" min="0" required placeholder="20" /></div>
+                  <div class="form-group"><label for="productSortOrder">Sort Order</label><input class="form-input" id="productSortOrder" type="number" min="0" placeholder="1" /></div>
+                  <div class="form-group full">
+                    <label for="productPhotoUpload">Product Photo</label>
+                    <div class="photo-upload-box">
+                      <input class="form-input" id="productPhotoUpload" type="file" accept="image/jpeg,image/png,image/webp" />
+                      <input id="productPhotoUrl" type="hidden" />
+                      <div class="photo-preview" id="productPhotoPreview">No product photo selected</div>
+                      <button class="small-btn" id="clearProductPhotoButton" type="button">Remove Photo</button>
+                    </div>
+                  </div>
+                  <div class="form-group full">
+                    <label for="productAdditionalPhotoUpload">Additional Photos</label>
+                    <div class="photo-upload-box product-extra-photo-box">
+                      <input class="form-input" id="productAdditionalPhotoUpload" type="file" accept="image/jpeg,image/png,image/webp" multiple />
+                      <textarea class="hidden" id="productAdditionalPhotos" aria-hidden="true"></textarea>
+                      <div class="multi-photo-preview" id="productAdditionalPhotosPreview">No additional photos selected</div>
+                      <button class="small-btn" id="clearProductAdditionalPhotosButton" type="button">Remove Additional Photos</button>
+                    </div>
+                    <small class="form-help">Upload one or more JPG, PNG, or WEBP images. They are compressed in the browser and saved with the product.</small>
+                  </div>
+                  <div class="form-group full"><label for="productDescription">Description *</label><textarea class="form-textarea" id="productDescription" required placeholder="Write product details, usage note, strength, etc."></textarea></div>
+                  <label class="check-row full"><input id="productIsActive" type="checkbox" checked /> Show publicly</label>
+                  <div class="form-actions full"><button class="btn btn-primary" type="submit">Save Product</button><button class="btn btn-ghost" id="resetProductForm" type="button">Reset</button></div>
+                </form>
+              </section>
+              <section class="admin-card service-list-card">
+                <div class="section-head compact-head"><div><p class="section-kicker">Inventory</p><h2 class="section-title">Manage store products</h2></div></div>
+                <div class="admin-list" id="adminProductList"><div class="loading-state">Loading products...</div></div>
+              </section>
+            </div>
+          </section>
+
+          <section class="admin-page" data-admin-page="orders">
+            <div class="admin-grid services-admin-grid">
+              <section class="admin-card">
+                <div class="section-head compact-head"><div><p class="section-kicker">bKash and Nagad</p><h2 class="section-title">Payment numbers</h2><p class="section-copy">Set the bKash/Nagad numbers shown during checkout. Cash on Delivery stays available automatically.</p></div></div>
+                <form id="storePaymentSettingsForm" class="form-grid">
+                  <div class="form-group"><label for="storeBkashNumber">bKash Number</label><input class="form-input" id="storeBkashNumber" placeholder="01XXXXXXXXX" /></div>
+                  <div class="form-group"><label for="storeNagadNumber">Nagad Number</label><input class="form-input" id="storeNagadNumber" placeholder="01XXXXXXXXX" /></div>
+                  <div class="form-group full"><label for="storePaymentInstructions">Payment Instructions</label><textarea class="form-textarea" id="storePaymentInstructions" placeholder="Send payment first, then enter sender number and Transaction ID."></textarea></div>
+                  <div class="form-actions full"><button class="btn btn-primary" type="submit">Save Payment Settings</button></div>
+                </form>
+              </section>
+              <section class="admin-card service-list-card">
+                <div class="section-head compact-head"><div><p class="section-kicker">Store</p><h2 class="section-title">Order Details</h2><p class="section-copy">Track pending payment, payment submitted, payment confirmed, on the way, delivered and cancelled store orders.</p></div></div>
+                <div class="admin-list" id="adminOrderList"><div class="loading-state">Loading orders...</div></div>
+              </section>
+            </div>
+          </section>
+
+          <section class="admin-page" data-admin-page="store-users">
+            <div class="admin-grid services-admin-grid">
+              <section class="admin-card">
+                <div class="section-head compact-head"><div><p class="section-kicker">Default Photos</p><h2 class="section-title">User profile photos</h2><p class="section-copy">Upload default photos that users can choose during sign up. Choosing a profile photo stays optional for users.</p></div></div>
+                <form id="avatarForm" class="form-grid">
+                  <div class="form-group full"><label for="avatarLabel">Photo Label</label><input class="form-input" id="avatarLabel" placeholder="Example: Green avatar" /></div>
+                  <div class="form-group"><label for="avatarSortOrder">Sort Order</label><input class="form-input" id="avatarSortOrder" type="number" min="0" placeholder="1" /></div>
+                  <div class="form-group full">
+                    <label for="avatarPhotoUpload">Upload Photo *</label>
+                    <div class="photo-upload-box">
+                      <input class="form-input" id="avatarPhotoUpload" type="file" accept="image/jpeg,image/png,image/webp" />
+                      <input id="avatarPhotoUrl" type="hidden" />
+                      <div class="photo-preview" id="avatarPhotoPreview">No profile photo selected</div>
+                      <button class="small-btn" id="clearAvatarPhotoButton" type="button">Remove Photo</button>
+                    </div>
+                  </div>
+                  <label class="check-row full"><input id="avatarIsActive" type="checkbox" checked /> Show during sign up</label>
+                  <div class="form-actions full"><button class="btn btn-primary" type="submit">Save Profile Photo</button></div>
+                </form>
+                <div class="admin-list avatar-admin-list" id="adminAvatarList"><div class="loading-state">Loading profile photos...</div></div>
+              </section>
+              <section class="admin-card">
+                <div class="section-head compact-head"><div><p class="section-kicker">Store</p><h2 class="section-title">User Login Information</h2><p class="section-copy">View or delete registered store users. Passwords are protected; use Reset Password to set a new temporary password.</p></div></div>
+                <div class="admin-list" id="adminStoreUserList"><div class="loading-state">Loading users...</div></div>
+              </section>
+            </div>
+          </section>
+
+          <section class="admin-page" data-admin-page="comments">
+            <section class="admin-card">
+              <div class="section-head compact-head"><div><p class="section-kicker">Store</p><h2 class="section-title">User Reviews</h2><p class="section-copy">Read delivered customer reviews and add admin replies.</p></div></div>
+              <div class="admin-list" id="adminCommentList"><div class="loading-state">Loading reviews...</div></div>
+            </section>
+          </section>
+
+
+          <section class="admin-page" data-admin-page="about">
+            <div class="admin-grid services-admin-grid">
+              <section class="admin-card">
+                <div class="section-head compact-head"><div><p class="section-kicker">About</p><h2 class="section-title">Team profiles</h2><p class="section-copy">Add founder, co-founder, staff and team profiles with descriptions and photos.</p></div></div>
+                <form id="aboutProfileForm" class="form-grid">
+                  <input type="hidden" id="aboutProfileId" />
+                  <div class="form-group"><label for="aboutProfileName">Name *</label><input class="form-input" id="aboutProfileName" required placeholder="Example: Siam Chowdhury" /></div>
+                  <div class="form-group"><label for="aboutProfileRole">Role</label><input class="form-input" id="aboutProfileRole" placeholder="Founder, Co-Founder, Staff" /></div>
+                  <div class="form-group"><label for="aboutProfileSortOrder">Sort Order</label><input class="form-input" id="aboutProfileSortOrder" type="number" value="99" /></div>
+                  <div class="form-group full"><label for="aboutProfilePhotoUpload">Photo Upload</label><input class="form-input" id="aboutProfilePhotoUpload" type="file" accept="image/jpeg,image/png,image/webp" /><input id="aboutProfilePhotoUrl" type="hidden" /></div>
+                  <div class="form-group full"><label for="aboutProfileDescription">Description</label><textarea class="form-textarea" id="aboutProfileDescription" placeholder="Write profile details."></textarea></div>
+                  <label class="check-row full"><input id="aboutProfileIsPublished" type="checkbox" checked /> Publish on About page</label>
+                  <div class="form-actions full"><button class="btn btn-primary" type="submit">Save Team Profile</button><button class="btn btn-ghost" id="resetAboutProfileForm" type="button">Reset</button></div>
+                </form>
+                <div class="admin-list" id="aboutProfileList"><div class="loading-state">Loading team profiles...</div></div>
+              </section>
+              <section class="admin-card">
+                <div class="section-head compact-head"><div><p class="section-kicker">Blog</p><h2 class="section-title">Publish blog posts</h2><p class="section-copy">Write posts for updates, announcements and Medicare At Home stories.</p></div></div>
+                <form id="aboutPostForm" class="form-grid">
+                  <input type="hidden" id="aboutPostId" />
+                  <div class="form-group full"><label for="aboutPostTitle">Blog Title *</label><input class="form-input" id="aboutPostTitle" required placeholder="Post title" /></div>
+                  <div class="form-group"><label for="aboutPostAuthor">Author</label><input class="form-input" id="aboutPostAuthor" placeholder="Medicare At Home" /></div>
+                  <div class="form-group"><label for="aboutPostCoverUpload">Cover Photo</label><input class="form-input" id="aboutPostCoverUpload" type="file" accept="image/jpeg,image/png,image/webp" /><input id="aboutPostCoverImage" type="hidden" /></div>
+                  <div class="form-group full"><label for="aboutPostExcerpt">Short Summary</label><textarea class="form-textarea" id="aboutPostExcerpt"></textarea></div>
+                  <div class="form-group full"><label for="aboutPostContent">Blog Content</label><textarea class="form-textarea" id="aboutPostContent" placeholder="Write the full blog post."></textarea></div>
+                  <label class="check-row full"><input id="aboutPostIsPublished" type="checkbox" checked /> Publish on About page</label>
+                  <div class="form-actions full"><button class="btn btn-primary" type="submit">Save Blog Post</button><button class="btn btn-ghost" id="resetAboutPostForm" type="button">Reset</button></div>
+                </form>
+                <div class="admin-list" id="aboutPostList"><div class="loading-state">Loading blog posts...</div></div>
+              </section>
+            </div>
+          </section>
+
+          <section class="admin-page" data-admin-page="sub-admins" data-master-only>
+            <div class="admin-grid services-admin-grid">
+              <section class="admin-card">
+                <div class="section-head compact-head"><div><p class="section-kicker">Master Admin</p><h2 class="section-title" id="subAdminFormTitle">Create sub-admin</h2><p class="section-copy">Create accounts for helpers and choose exactly which dashboard areas they can access.</p></div></div>
+                <form id="subAdminForm" class="form-grid">
+                  <input type="hidden" id="subAdminId" />
+                  <div class="form-group"><label for="subAdminUsername">Username *</label><input class="form-input" id="subAdminUsername" required placeholder="example-admin" /></div>
+                  <div class="form-group"><label for="subAdminDisplayName">Display Name</label><input class="form-input" id="subAdminDisplayName" placeholder="Staff name" /></div>
+                  <div class="form-group full"><label for="subAdminPassword">Password</label><input class="form-input" id="subAdminPassword" type="password" placeholder="Minimum 6 characters. Leave blank when editing to keep old password." /></div>
+                  <div class="form-group full"><label>Permission Modules</label><div class="permission-grid" id="subAdminPermissions"></div></div>
+                  <label class="check-row full"><input id="subAdminIsActive" type="checkbox" checked /> Account active</label>
+                  <div class="form-actions full"><button class="btn btn-primary" type="submit">Save Sub-Admin</button><button class="btn btn-ghost" id="resetSubAdminForm" type="button">Reset</button></div>
+                </form>
+              </section>
+              <section class="admin-card">
+                <div class="section-head compact-head"><div><p class="section-kicker">Sub-Admins</p><h2 class="section-title">Created accounts</h2><p class="section-copy">Only the master admin can see and manage these accounts.</p></div></div>
+                <div class="admin-list" id="subAdminList"><div class="loading-state">Loading sub-admins...</div></div>
+              </section>
+            </div>
+          </section>
+          <section class="admin-page" data-admin-page="contact">
+            <section class="admin-card">
+              <p class="section-kicker">Contact Settings</p>
+              <h2>Edit contact details</h2>
+              <form id="settingsForm" class="form-grid">
+                <div class="form-group full">
+                  <label for="location">Service Location</label>
+                  <input class="form-input" id="location" placeholder="Sultanpur, Feni, Bangladesh" />
+                </div>
+                <div class="form-group">
+                  <label for="whatsappSetting">Default WhatsApp</label>
+                  <input class="form-input" id="whatsappSetting" placeholder="8801647139287" />
+                </div>
+                <div class="form-group full">
+                  <label for="phonesSetting">Phone Numbers</label>
+                  <input class="form-input" id="phonesSetting" placeholder="01647139287, 01609672748, 01623148949" />
+                </div>
+                <div class="form-group full">
+                  <label for="socialLinksSetting">Social Media Links</label>
+                  <textarea class="form-textarea" id="socialLinksSetting" placeholder="Facebook | https://facebook.com/your-page&#10;Instagram | https://instagram.com/your-page&#10;Telegram | https://t.me/Ch0wdhury_Siam"></textarea>
+                  <small class="form-help">Write one account per line using: Name | Link</small>
+                </div>
+                <div class="form-group full">
+                  <label for="emergencyNote">Emergency Note</label>
+                  <textarea class="form-textarea" id="emergencyNote"></textarea>
+                </div>
+                <div class="form-actions full">
+                  <button class="btn btn-primary" type="submit">Save Contact Settings</button>
+                </div>
+              </form>
+            </section>
+          </section>
+        </div>
+      </section>
+    </main>
+
+    <div class="toast" id="toast" aria-live="polite" aria-atomic="true"></div>
+    <script type="module" src="/assets/js/admin.js?v=typography-spacing-fix-v5"></script>
+  </body>
+</html>

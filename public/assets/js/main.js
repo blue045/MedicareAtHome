@@ -1,0 +1,1410 @@
+const fallbackSettings = {
+  siteName: "Medicare At Home",
+  tagline: "Professional Home Visit Medical Service",
+  description:
+    "Get trusted injection, cannula, dressing, plaster and basic home medical care from available doctors and medical professionals.",
+  heroHighlight: "Medical care",
+  heroTitleLine: "at your home.",
+  primaryButtonText: "WhatsApp Appointment",
+  secondaryButtonText: "View Doctors",
+  servicesButtonText: "Services",
+  contactButtonText: "Contact",
+  navServicesLabel: "Services",
+  navStoreLabel: "Store",
+  navDoctorsLabel: "Doctors",
+  navAmbulanceLabel: "Ambulance",
+  navBloodLabel: "Blood",
+  navHowItWorksLabel: "About",
+  navContactLabel: "Contact",
+  servicesPageTitle: "What we provide",
+  servicesPageCopy: "Home medical services built for quick contact, clear information, and simple appointment booking.",
+  storePageTitle: "Buy medicine online",
+  storePageCopy: "Browse available medicines, check price and stock, then log in to order or add items to your cart.",
+  doctorsPageTitle: "Choose the right professional",
+  doctorsPageCopy: "Tap a card to open the full doctor profile with phone, WhatsApp, designation and chamber location.",
+  ambulancePageTitle: "Need an ambulance?",
+  ambulancePageCopy: "Call or message us for ambulance support. Share patient condition, pickup location and destination.",
+  ambulanceDescription: "Fast ambulance contact support for Medicare At Home visitors. Use the call button for urgent help or WhatsApp to send pickup details.",
+  ambulanceButtonText: "Order Ambulance",
+  ambulancePhone: "+8801609672748",
+  ambulanceWhatsapp: "+8801609672748",
+  bloodPageTitle: "Available blood people",
+  bloodPageCopy: "Tap a card to view full details. Female contact details are protected and only available through admin.",
+  howPageTitle: "About Medicare At Home",
+  howPageCopy: "Meet the Medicare At Home team and read published updates.",
+  contactPageTitle: "Need service today?",
+  contactPageCopy: "Use WhatsApp for the fastest booking. For emergency conditions, call local emergency services first.",
+  loginPageTitle: "Log in",
+  loginPageCopy: "Log in to order medicine, manage your cart and review delivered products.",
+  signupPageTitle: "Sign up",
+  signupPageCopy: "Create an account to order medicine, save cart items and rate products after delivery.",
+  profilePageTitle: "My profile and orders",
+  profilePageCopy: "View your profile information, cart and order status.",
+  location: "Sultanpur, Feni, Bangladesh",
+  email: "",
+  instagramHandle: "",
+  facebookUrl: "https://www.facebook.com/",
+  socialLinks: [],
+  phones: ["01647139287", "01609672748", "01623148949"],
+  whatsapp: "8801647139287",
+  serviceTags: ["Injection", "Cannula", "Dressing", "Plaster", "Home Medical Care"],
+  serviceIcons: {
+    Injection: "💉",
+    Cannula: "🩺",
+    Dressing: "🩹",
+    Plaster: "🏥",
+    "Home Medical Care": "🏠"
+  },
+  serviceDescriptions: {
+    Injection: "Home visit injection support from trained medical professionals.",
+    Cannula: "Cannula support at home with appointment confirmation by phone or WhatsApp.",
+    Dressing: "Clean wound dressing support at home after confirming patient condition.",
+    Plaster: "Basic plaster care support with direct contact before appointment.",
+    "Home Medical Care": "General home medical support for common care needs."
+  },
+  emergencyNote:
+    "This website is for home visit medical service contact. For life-threatening emergencies, contact your nearest hospital or emergency hotline immediately.",
+  stats: [
+    { value: "24/7", label: "Contact support" },
+    { value: "5+", label: "Home care services" },
+    { value: "3", label: "Contact numbers" },
+    { value: "Fast", label: "WhatsApp response" }
+  ]
+};
+
+const fallbackDoctors = [];
+
+const serviceIcons = {
+  injection: "💉",
+  cannula: "🩺",
+  dressing: "🩹",
+  plaster: "🏥",
+  "home medical care": "🏠"
+};
+
+const appointmentWeekdays = ["Saturday", "Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday"];
+const saturdayToThursday = new Set(["saturday", "sunday", "monday", "tuesday", "wednesday", "thursday"]);
+
+const state = {
+  settings: fallbackSettings,
+  doctors: fallbackDoctors,
+  bloodProfiles: [],
+  visibleDoctors: [],
+  query: "",
+  bloodQuery: "",
+  service: "",
+  appointmentWeekday: "",
+  aboutProfiles: [],
+  aboutPosts: []
+};
+
+const qs = (selector, root = document) => root.querySelector(selector);
+const qsa = (selector, root = document) => [...root.querySelectorAll(selector)];
+
+function escapeHtml(value = "") {
+  return String(value)
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;")
+    .replaceAll("'", "&#039;");
+}
+
+function isImageMedia(value = "") {
+  const media = String(value || "").trim();
+  return /^data:image\/(jpeg|jpg|png|webp);base64,/i.test(media) || /^https?:\/\//i.test(media) || media.startsWith("/");
+}
+
+function renderServiceIcon(value = "", alt = "Service") {
+  const media = String(value || "").trim();
+  if (isImageMedia(media)) {
+    return `<span class="service-icon has-image"><img src="${escapeHtml(media)}" alt="${escapeHtml(alt)}" loading="lazy" /></span>`;
+  }
+  return `<span class="service-icon">${escapeHtml(media || "✚")}</span>`;
+}
+
+function normalizePhone(phone = "") {
+  return String(phone).replace(/[^0-9+]/g, "");
+}
+
+function normalizeWhatsApp(number = "") {
+  const clean = String(number).replace(/[^0-9]/g, "");
+  if (!clean) return "";
+  if (clean.startsWith("0")) return `88${clean}`;
+  return clean;
+}
+
+function normalizeDisplayLocation(value = "") {
+  return String(value || "")
+    .replaceAll("Feni, Barishal, Bangladesh", "Sultanpur, Feni, Bangladesh")
+    .replaceAll("Feni, Barishal", "Sultanpur, Feni")
+    .replaceAll("Feni and nearby areas", "Sultanpur, Feni and nearby areas")
+    .replaceAll("Barishal and nearby areas", "Sultanpur, Feni and nearby areas");
+}
+
+function normalizeAboutNavLabel(value = "") {
+  const label = String(value || "").trim();
+  if (!label || /how\s*it\s*works/i.test(label)) return "About";
+  return label;
+}
+
+function locationPermissionHelpMessage() {
+  if (typeof window !== "undefined" && !window.isSecureContext) {
+    return "Auto location needs HTTPS or localhost. Open the live HTTPS website, or type the address manually.";
+  }
+  return "Location permission is blocked. Tap the browser lock icon or site settings, allow Location for this website, then tap again. You can also type the address manually.";
+}
+
+function locationErrorMessage(error) {
+  if (!error) return "Could not get your current location. You can type the address manually.";
+  if (error.code === 1) return locationPermissionHelpMessage();
+  if (error.code === 2) return "Your location is currently unavailable. Turn on GPS/mobile location, or type the address manually.";
+  if (error.code === 3) return "Location request timed out. Turn on GPS and try again, or type the address manually.";
+  return "Could not get your current location. You can type the address manually.";
+}
+
+function setLocationPermissionStatus(button, message = "", type = "info") {
+  if (!button) return;
+  const group = button.closest(".form-group") || button.parentElement;
+  if (!group) return;
+  let status = group.querySelector("[data-location-status]");
+  if (!status) {
+    status = document.createElement("small");
+    status.className = "form-help location-permission-status";
+    status.dataset.locationStatus = "true";
+    button.insertAdjacentElement("afterend", status);
+  }
+  status.textContent = message;
+  status.hidden = !message;
+  status.classList.toggle("is-error", type === "error");
+  status.classList.toggle("is-success", type === "success");
+}
+
+function canAskForLocation() {
+  return Boolean(typeof window !== "undefined" && window.isSecureContext && navigator.geolocation);
+}
+
+function getCurrentPositionPromise() {
+  return new Promise((resolve, reject) => {
+    if (typeof window !== "undefined" && !window.isSecureContext) {
+      reject(new Error(locationPermissionHelpMessage()));
+      return;
+    }
+    if (!navigator.geolocation) {
+      reject(new Error("Auto location is not supported on this browser. Please type the address manually."));
+      return;
+    }
+    navigator.geolocation.getCurrentPosition(resolve, reject, {
+      enableHighAccuracy: true,
+      timeout: 15000,
+      maximumAge: 60000
+    });
+  });
+}
+
+async function updateLocationPermissionStatus(button) {
+  if (!button) return;
+  if (typeof window !== "undefined" && !window.isSecureContext) {
+    setLocationPermissionStatus(button, locationPermissionHelpMessage(), "error");
+    return;
+  }
+  if (!navigator.geolocation) {
+    setLocationPermissionStatus(button, "Auto location is not supported on this browser. Please type the address manually.", "error");
+    button.disabled = true;
+    return;
+  }
+  if (!navigator.permissions?.query) return;
+  try {
+    const permission = await navigator.permissions.query({ name: "geolocation" });
+    if (permission.state === "denied") {
+      setLocationPermissionStatus(button, locationPermissionHelpMessage(), "error");
+    }
+    permission.onchange = () => {
+      if (permission.state === "denied") setLocationPermissionStatus(button, locationPermissionHelpMessage(), "error");
+      if (permission.state === "granted") setLocationPermissionStatus(button, "Location permission allowed. Tap the button to auto-fill your address.", "success");
+      if (permission.state === "prompt") setLocationPermissionStatus(button, "Tap the button and choose Allow when your browser asks for location permission.", "info");
+    };
+  } catch {
+    // Some browsers do not support querying geolocation permission state.
+  }
+}
+
+function mapLinkFromCoords(latitude, longitude) {
+  return `https://www.google.com/maps?q=${encodeURIComponent(latitude)},${encodeURIComponent(longitude)}`;
+}
+
+function compactAreaFromAddress(address = {}, displayName = "") {
+  const parts = [
+    address.suburb || address.neighbourhood || address.quarter || address.village || address.town || address.city,
+    address.city_district || address.county || address.state_district,
+    address.state,
+    address.country
+  ]
+    .map((part) => String(part || "").trim())
+    .filter(Boolean);
+  const uniqueParts = [...new Set(parts)];
+  if (uniqueParts.length) return uniqueParts.join(", ");
+  return String(displayName || "").split(",").slice(-4).map((part) => part.trim()).filter(Boolean).join(", ");
+}
+
+async function reverseGeocodeLocation(latitude, longitude) {
+  try {
+    const url = `https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=${encodeURIComponent(latitude)}&lon=${encodeURIComponent(longitude)}&zoom=18&addressdetails=1&accept-language=en`;
+    const response = await fetch(url, { headers: { accept: "application/json" } });
+    if (!response.ok) throw new Error("Address lookup failed.");
+    const data = await response.json();
+    return {
+      fullAddress: data.display_name || "",
+      shortAddress: compactAreaFromAddress(data.address || {}, data.display_name || "")
+    };
+  } catch (error) {
+    console.warn(error);
+    return { fullAddress: "", shortAddress: "" };
+  }
+}
+
+function setLocationFieldValue(selector, value) {
+  const field = qs(selector);
+  if (!field || !value) return;
+  field.value = value;
+  field.dispatchEvent(new Event("input", { bubbles: true }));
+  field.dispatchEvent(new Event("change", { bubbles: true }));
+}
+
+async function fillLocationFromPermission(button) {
+  const targetSelector = button.dataset.locationTarget || "";
+  const shortTargetSelector = button.dataset.locationShortTarget || "";
+  const originalText = button.textContent;
+  button.disabled = true;
+  button.textContent = "Getting location...";
+  setLocationPermissionStatus(button, "Waiting for location permission...", "info");
+  try {
+    const position = await getCurrentPositionPromise();
+    const { latitude, longitude } = position.coords || {};
+    if (typeof latitude !== "number" || typeof longitude !== "number") throw new Error("Invalid location data.");
+    const lookup = await reverseGeocodeLocation(latitude, longitude);
+    const coordsText = `${latitude.toFixed(6)}, ${longitude.toFixed(6)}`;
+    const mapUrl = mapLinkFromCoords(latitude.toFixed(6), longitude.toFixed(6));
+    const fullAddress = [lookup.fullAddress || `GPS Location: ${coordsText}`, `Google Maps: ${mapUrl}`].filter(Boolean).join("\n");
+    setLocationFieldValue(targetSelector, fullAddress);
+    if (shortTargetSelector) setLocationFieldValue(shortTargetSelector, lookup.shortAddress || coordsText);
+    setLocationPermissionStatus(button, "Location selected successfully.", "success");
+    toast("Location selected successfully.");
+  } catch (error) {
+    const message = error && typeof error.code === "number" ? locationErrorMessage(error) : error.message || "Could not select location. You can type the address manually.";
+    setLocationPermissionStatus(button, message, "error");
+    toast(message);
+  } finally {
+    button.disabled = false;
+    button.textContent = originalText || "Use my current location";
+  }
+}
+
+function initLocationPermissionButtons(root = document) {
+  qsa("[data-use-current-location]", root).forEach((button) => {
+    if (button.dataset.locationReady === "true") return;
+    button.dataset.locationReady = "true";
+    button.addEventListener("click", (event) => {
+      event.preventDefault();
+      event.stopImmediatePropagation();
+      fillLocationFromPermission(button);
+    });
+    updateLocationPermissionStatus(button);
+  });
+}
+
+function normalizeDoctorChambers(doctor = {}) {
+  const chambers = Array.isArray(doctor.chambers) ? doctor.chambers : [];
+  const clean = chambers
+    .map((item) => ({
+      location: normalizeDisplayLocation(item?.location || ""),
+      weekday: String(item?.weekday || item?.weekdays || "").trim(),
+      time: String(item?.time || item?.times || "").trim()
+    }))
+    .filter((item) => item.location || item.weekday || item.time);
+  if (clean.length) return clean;
+  const legacyLocation = normalizeDisplayLocation(doctor.serviceArea || "");
+  const legacyAvailable = String(doctor.available || "").trim();
+  if (!legacyLocation && !legacyAvailable) return [];
+  return [{ location: legacyLocation, weekday: "Everyday", time: legacyAvailable || "9:00 AM - 10:00 PM" }];
+}
+
+function renderDoctorChambers(doctor = {}) {
+  const chambers = normalizeDoctorChambers(doctor).filter((item) => item.location && item.weekday && item.time);
+  if (!chambers.length) return "";
+  return `
+    <div class="doctor-chamber-section">
+      <h3>Chamber Location</h3>
+      <div class="doctor-chamber-list">
+        ${chambers.map((item) => `
+          <div class="doctor-chamber-item">
+            <strong>${escapeHtml(item.location)}</strong>
+            <span>${escapeHtml(item.weekday)} • ${escapeHtml(item.time)}</span>
+          </div>
+        `).join("")}
+      </div>
+    </div>
+  `;
+}
+
+function normalizeAppointmentWeekday(value = "") {
+  const clean = String(value || "").trim().toLowerCase();
+  return appointmentWeekdays.find((weekday) => weekday.toLowerCase() === clean) || "";
+}
+
+function getAppointmentWeekdayFromUrl() {
+  try {
+    const params = new URLSearchParams(window.location.search);
+    return normalizeAppointmentWeekday(params.get("weekday") || "");
+  } catch (error) {
+    return "";
+  }
+}
+
+function chamberMatchesWeekday(chamber = {}, weekday = "") {
+  const selected = normalizeAppointmentWeekday(weekday).toLowerCase();
+  if (!selected) return false;
+  const raw = String(chamber.weekday || chamber.weekdays || "").trim().toLowerCase();
+  if (!raw) return false;
+  const compact = raw.replace(/\s+/g, " ");
+  if (compact.includes("everyday") || compact.includes("daily")) return true;
+  if (compact.includes("saturday - thursday") || compact.includes("saturday-thursday") || compact.includes("saturday to thursday")) {
+    return saturdayToThursday.has(selected);
+  }
+  return compact.split(/[,/|]+/).some((part) => part.trim() === selected) || compact.includes(selected);
+}
+
+function doctorAvailableOnWeekday(doctor = {}, weekday = "") {
+  if (doctor.isActive === false) return false;
+  return normalizeDoctorChambers(doctor).some((chamber) => chamberMatchesWeekday(chamber, weekday));
+}
+
+function matchingDoctorChambers(doctor = {}, weekday = "") {
+  return normalizeDoctorChambers(doctor)
+    .filter((chamber) => chamber.location && chamber.time && chamberMatchesWeekday(chamber, weekday))
+    .slice(0, 2);
+}
+
+function initials(name = "") {
+  return name
+    .split(" ")
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((part) => part[0]?.toUpperCase())
+    .join("") || "M";
+}
+
+function slugify(value = "") {
+  const slug = String(value || "")
+    .toLowerCase()
+    .trim()
+    .replace(/&/g, " and ")
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "")
+    .slice(0, 80);
+  return slug || "doctor";
+}
+
+function doctorUrl(doctor = {}) {
+  const id = String(doctor.id || "").trim();
+  const nameSlug = slugify(doctor.name || doctor.specialty || "doctor");
+  return `/doctor/${encodeURIComponent(id ? `${id}-${nameSlug}` : nameSlug)}`;
+}
+
+function serviceUrl(serviceName = "") {
+  return `/Services/${encodeURIComponent(slugify(serviceName || "service"))}`;
+}
+
+function getServiceDefinitions() {
+  const services = state.settings.serviceTags?.length
+    ? state.settings.serviceTags
+    : [...new Set(state.doctors.flatMap((doctor) => doctor.services || []))];
+  const customIcons = state.settings.serviceIcons && typeof state.settings.serviceIcons === "object" ? state.settings.serviceIcons : {};
+  const customDescriptions = state.settings.serviceDescriptions && typeof state.settings.serviceDescriptions === "object" ? state.settings.serviceDescriptions : {};
+  return (services.length ? services : fallbackSettings.serviceTags)
+    .map((service) => {
+      const name = String(service || "").trim();
+      const key = name.toLowerCase();
+      return {
+        name,
+        slug: slugify(name),
+        icon: customIcons[name] || customIcons[key] || serviceIcons[key] || fallbackSettings.serviceIcons?.[name] || "✚",
+        description: customDescriptions[name] || customDescriptions[key] || fallbackSettings.serviceDescriptions?.[name] || ""
+      };
+    })
+    .filter((service) => service.name);
+}
+
+function getServiceSlug() {
+  const parts = window.location.pathname.split("/").filter(Boolean);
+  if (parts[0]?.toLowerCase() !== "services" || !parts[1]) return "";
+  return decodeURIComponent(parts.slice(1).join("/")).replace(/^\/+|\/+$/g, "");
+}
+
+function doctorMatchesSlug(doctor = {}, slug = "") {
+  const cleanSlug = decodeURIComponent(String(slug || "")).replace(/^\/+|\/+$/g, "");
+  if (!cleanSlug) return false;
+  const id = String(doctor.id || "");
+  if (id && (cleanSlug === id || cleanSlug.startsWith(`${id}-`))) return true;
+  return cleanSlug === slugify(doctor.name || doctor.specialty || "doctor");
+}
+
+function bloodUrl(profile = {}) {
+  const id = String(profile.id || "").trim();
+  const nameSlug = slugify(profile.fullName || profile.bloodGroup || "blood");
+  return `/Blood/${encodeURIComponent(id ? `${id}-${nameSlug}` : nameSlug)}`;
+}
+
+function bloodMatchesSlug(profile = {}, slug = "") {
+  const cleanSlug = decodeURIComponent(String(slug || "")).replace(/^\/+|\/+$/g, "");
+  if (!cleanSlug) return false;
+  const id = String(profile.id || "");
+  if (id && (cleanSlug === id || cleanSlug.startsWith(`${id}-`))) return true;
+  return cleanSlug === slugify(profile.fullName || profile.bloodGroup || "blood");
+}
+
+function getBloodPathParts() {
+  return window.location.pathname.split("/").filter(Boolean);
+}
+
+function getBloodDetailSlug() {
+  const parts = getBloodPathParts();
+  if (!parts.length || parts[0].toLowerCase() !== "blood") return "";
+  return parts.slice(1).join("/");
+}
+
+function isBloodDetailPath() {
+  return Boolean(getBloodDetailSlug());
+}
+
+function formatGender(profile = {}) {
+  if (profile.gender === "other") return profile.customGender || "Other";
+  return profile.gender ? profile.gender.charAt(0).toUpperCase() + profile.gender.slice(1) : "";
+}
+function bloodGroupRank(group = "") {
+  const normalized = String(group || "")
+    .toUpperCase()
+    .replace(/\s+/g, "")
+    .replace("POSITIVE", "+")
+    .replace("NEGATIVE", "-");
+  const order = ["A+", "A-", "B+", "B-", "AB+", "AB-", "O+", "O-"];
+  const index = order.indexOf(normalized);
+  return index === -1 ? order.length : index;
+}
+
+function sortBloodProfiles(profiles = []) {
+  return [...profiles].sort((a, b) => {
+    const byBlood = bloodGroupRank(a.bloodGroup) - bloodGroupRank(b.bloodGroup);
+    if (byBlood !== 0) return byBlood;
+    return String(a.fullName || "").localeCompare(String(b.fullName || ""));
+  });
+}
+
+function bloodProfileMatches(profile = {}) {
+  const query = state.bloodQuery.trim().toLowerCase();
+  if (!query) return true;
+  return [profile.fullName, profile.bloodGroup, formatGender(profile)]
+    .filter(Boolean)
+    .some((value) => String(value).toLowerCase().includes(query));
+}
+
+
+
+function initPasswordVisibilityToggles(root = document) {
+  qsa('input[type="password"]', root).forEach((input) => {
+    if (input.dataset.passwordToggleReady === "true") return;
+    input.dataset.passwordToggleReady = "true";
+    input.dataset.passwordInput = "true";
+
+    const wrapper = document.createElement("div");
+    wrapper.className = "password-field";
+    input.parentNode.insertBefore(wrapper, input);
+    wrapper.append(input);
+
+    const button = document.createElement("button");
+    button.type = "button";
+    button.className = "password-toggle-btn";
+    button.setAttribute("aria-label", "Show password");
+    button.setAttribute("aria-pressed", "false");
+    button.innerHTML = "👁";
+    button.addEventListener("click", () => {
+      const show = input.type === "password";
+      input.type = show ? "text" : "password";
+      button.setAttribute("aria-label", show ? "Hide password" : "Show password");
+      button.setAttribute("aria-pressed", String(show));
+      button.innerHTML = show ? "🙈" : "👁";
+      input.focus({ preventScroll: true });
+    });
+    wrapper.append(button);
+  });
+}
+
+function toast(message) {
+  const container = qs("#toast");
+  if (!container) return;
+  const item = document.createElement("div");
+  item.className = "toast-message";
+  item.textContent = message;
+  container.append(item);
+  setTimeout(() => item.remove(), 3600);
+}
+
+const publicCachePrefix = "medicare_public_cache_v5:";
+const publicCacheMaxAge = 5 * 60 * 1000;
+
+function readPublicCache(key, maxAge = publicCacheMaxAge) {
+  try {
+    const cached = JSON.parse(localStorage.getItem(`${publicCachePrefix}${key}`) || "null");
+    if (!cached || !cached.timestamp || Date.now() - cached.timestamp > maxAge) return null;
+    return cached.data || null;
+  } catch {
+    return null;
+  }
+}
+
+function writePublicCache(key, data) {
+  try {
+    localStorage.setItem(`${publicCachePrefix}${key}`, JSON.stringify({ timestamp: Date.now(), data }));
+  } catch {
+    // Large data URLs can fill storage. Ignore cache errors and keep the page usable.
+  }
+}
+
+async function fetchJson(url, options = {}) {
+  const controller = new AbortController();
+  const timeout = window.setTimeout(() => controller.abort(), options.timeout || 9000);
+  try {
+    const response = await fetch(url, {
+      headers: { accept: "application/json" },
+      cache: options.cache || "default",
+      signal: controller.signal
+    });
+    if (!response.ok) throw new Error(`Request failed: ${response.status}`);
+    return response.json();
+  } finally {
+    window.clearTimeout(timeout);
+  }
+}
+
+function applyCachedPublicData(needsDoctors, needsBlood) {
+  const cachedSettings = readPublicCache("settings");
+  if (cachedSettings?.settings) state.settings = { ...fallbackSettings, ...cachedSettings.settings };
+
+  if (needsDoctors) {
+    const cachedDoctors = readPublicCache("doctors");
+    if (Array.isArray(cachedDoctors?.doctors)) state.doctors = cachedDoctors.doctors;
+  }
+
+  // Blood approvals must appear immediately after admin approval, so do not
+  // show a stale localStorage blood list before the fresh API request returns.
+  if (needsBlood) {
+    state.bloodProfiles = [];
+  }
+}
+
+async function loadData() {
+  const needsDoctors = Boolean(qs("#doctorsGrid") || qs("#doctorDetailPage") || qs("#serviceFilter") || qs("#appointmentDoctorsGrid"));
+  const needsBlood = Boolean(qs("#bloodGrid") || qs("#bloodDetailPage"));
+  const needsAbout = Boolean(qs("#aboutProfilesGrid") || qs("#aboutPostsGrid"));
+
+  // Render immediately with fallback or cached content so users do not stare at blank sections.
+  applyCachedPublicData(needsDoctors, needsBlood);
+  renderAll();
+
+  try {
+    const settingsResponse = await fetchJson("/api/settings");
+    state.settings = { ...fallbackSettings, ...(settingsResponse.settings || {}) };
+    writePublicCache("settings", settingsResponse);
+
+    if (needsDoctors) {
+      const doctorsResponse = await fetchJson("/api/doctors");
+      state.doctors = Array.isArray(doctorsResponse?.doctors) ? doctorsResponse.doctors : fallbackDoctors;
+      writePublicCache("doctors", doctorsResponse);
+    }
+
+    if (needsBlood) {
+      const bloodResponse = await fetchJson(`/api/blood?fresh=${Date.now()}`, { cache: "no-store" });
+      state.bloodProfiles = Array.isArray(bloodResponse?.profiles) ? bloodResponse.profiles : [];
+    }
+
+    if (needsAbout) {
+      const aboutResponse = await fetchJson(`/api/about?fresh=${Date.now()}`, { cache: "no-store" });
+      state.aboutProfiles = Array.isArray(aboutResponse?.profiles) ? aboutResponse.profiles : [];
+      state.aboutPosts = Array.isArray(aboutResponse?.posts) ? aboutResponse.posts : [];
+    }
+
+    renderAll();
+  } catch (error) {
+    console.warn(error);
+  }
+}
+
+function renderAll() {
+  renderBranding();
+  renderStats();
+  renderServices();
+  renderServiceDetailPage();
+  renderFilters();
+  renderDoctors();
+  renderDoctorPage();
+  renderAppointmentDoctors();
+  renderBloodList();
+  renderBloodPage();
+  renderAmbulancePage();
+  renderContact();
+  renderAboutPage();
+}
+
+function renderAboutPage() {
+  const profilesGrid = qs("#aboutProfilesGrid");
+  const postsGrid = qs("#aboutPostsGrid");
+  if (profilesGrid) {
+    const profiles = Array.isArray(state.aboutProfiles) ? state.aboutProfiles : [];
+    profilesGrid.innerHTML = profiles.length
+      ? profiles.map((profile) => `
+        <article class="about-profile-card">
+          ${profile.photoUrl ? `<img class="about-profile-photo" src="${escapeHtml(profile.photoUrl)}" alt="${escapeHtml(profile.name || "Team member")}" loading="lazy" />` : `<span class="about-profile-photo about-profile-empty" aria-hidden="true">${escapeHtml((profile.name || "M").slice(0, 1).toUpperCase())}</span>`}
+          <div>
+            <p class="section-kicker">${escapeHtml(profile.role || "Team member")}</p>
+            <h3>${escapeHtml(profile.name || "Team member")}</h3>
+            ${profile.description ? `<p>${escapeHtml(profile.description)}</p>` : ""}
+          </div>
+        </article>
+      `).join("")
+      : `<div class="empty-state">Team profiles will appear here after admin publishes them.</div>`;
+  }
+  if (postsGrid) {
+    const posts = Array.isArray(state.aboutPosts) ? state.aboutPosts : [];
+    postsGrid.innerHTML = posts.length
+      ? posts.map((post) => `
+        <article class="about-post-card">
+          ${post.coverImage ? `<img class="about-post-cover" src="${escapeHtml(post.coverImage)}" alt="${escapeHtml(post.title || "Blog post")}" loading="lazy" />` : ""}
+          <div class="about-post-body">
+            <p class="section-kicker">${escapeHtml(post.author || "Medicare At Home")}</p>
+            <h3>${escapeHtml(post.title || "Blog post")}</h3>
+            ${post.excerpt ? `<p>${escapeHtml(post.excerpt)}</p>` : ""}
+            ${post.content ? `<div class="about-post-content">${escapeHtml(post.content).replaceAll("\n", "<br />")}</div>` : ""}
+          </div>
+        </article>
+      `).join("")
+      : `<div class="empty-state">Published blog posts will appear here.</div>`;
+  }
+}
+
+function renderBranding() {
+  const settings = state.settings;
+  const pageTitle = document.body?.dataset?.pageTitle;
+  document.title = pageTitle
+    ? `${pageTitle} | ${settings.siteName || "Medicare At Home"}`
+    : `${settings.siteName || "Medicare At Home"} | Home Visit Medical Service`;
+  qsa("[data-site-name]").forEach((node) => (node.textContent = settings.siteName || fallbackSettings.siteName));
+  qsa("[data-site-description]").forEach((node) => (node.textContent = settings.description || fallbackSettings.description));
+  qsa("[data-hero-highlight]").forEach((node) => (node.textContent = settings.heroHighlight || fallbackSettings.heroHighlight));
+  qsa("[data-hero-title-line]").forEach((node) => (node.textContent = settings.heroTitleLine || fallbackSettings.heroTitleLine));
+  qsa("[data-primary-action-label]").forEach((node) => (node.textContent = settings.primaryButtonText || fallbackSettings.primaryButtonText));
+  qsa("[data-secondary-action-label]").forEach((node) => (node.textContent = settings.secondaryButtonText || fallbackSettings.secondaryButtonText));
+  qsa("[data-ambulance-action-label]").forEach((node) => (node.textContent = settings.ambulanceButtonText || fallbackSettings.ambulanceButtonText));
+  qsa("[data-services-action-label]").forEach((node) => (node.textContent = settings.servicesButtonText || fallbackSettings.servicesButtonText));
+  qsa("[data-contact-action-label]").forEach((node) => (node.textContent = settings.contactButtonText || fallbackSettings.contactButtonText));
+  const aboutNavLabel = normalizeAboutNavLabel(settings.navHowItWorksLabel || fallbackSettings.navHowItWorksLabel);
+  qsa("[data-about-action-label]").forEach((node) => (node.textContent = aboutNavLabel));
+  const navLabels = [
+    ["/Services", settings.navServicesLabel || fallbackSettings.navServicesLabel],
+    ["/Store", settings.navStoreLabel || fallbackSettings.navStoreLabel],
+    ["/Doctors", settings.navDoctorsLabel || fallbackSettings.navDoctorsLabel],
+    ["/Ambulance", settings.navAmbulanceLabel || fallbackSettings.navAmbulanceLabel],
+    ["/Blood", settings.navBloodLabel || fallbackSettings.navBloodLabel],
+    ["/Contact", settings.navContactLabel || fallbackSettings.navContactLabel],
+    ["/About", aboutNavLabel]
+  ];
+  navLabels.forEach(([href, label]) => {
+    qsa(`.nav-links a[href="${href}"]`).forEach((node) => (node.textContent = label));
+  });
+  renderEditablePageText(settings);
+  qsa("[data-footer-location]").forEach((node) => (node.textContent = normalizeDisplayLocation(settings.location || fallbackSettings.location)));
+  qsa("[data-emergency-note]").forEach((node) => (node.textContent = settings.emergencyNote || fallbackSettings.emergencyNote));
+
+  const whatsAppNumber = normalizeWhatsApp(settings.whatsapp || settings.phones?.[0] || fallbackSettings.whatsapp);
+  const whatsAppMessage = encodeURIComponent(`Hello ${settings.siteName || "Medicare At Home"}, I need home medical service.`);
+  const whatsAppHref = whatsAppNumber ? `https://wa.me/${whatsAppNumber}?text=${whatsAppMessage}` : "/Contact";
+  const primaryPhone = normalizePhone(settings.phones?.[0] || fallbackSettings.phones[0]);
+
+  qsa("[data-whatsapp-link]").forEach((link) => {
+    link.href = whatsAppHref;
+    link.target = "_blank";
+    link.rel = "noopener noreferrer";
+  });
+
+  qsa("[data-primary-phone-link]").forEach((link) => {
+    link.href = primaryPhone ? `tel:${primaryPhone}` : "/Contact";
+  });
+
+  const heroChecks = qs("#heroChecks");
+  if (heroChecks) {
+    heroChecks.innerHTML = (settings.serviceTags || fallbackSettings.serviceTags)
+      .slice(0, 3)
+      .map((tag) => `<span class="check-pill">${escapeHtml(tag)}</span>`)
+      .join("");
+  }
+}
+
+function renderEditablePageText(settings = state.settings) {
+  const pageKey = document.body?.dataset?.pageTitle || "";
+  const map = {
+    Services: ["servicesPageTitle", "servicesPageCopy"],
+    Store: ["storePageTitle", "storePageCopy"],
+    Doctors: ["doctorsPageTitle", "doctorsPageCopy"],
+    Ambulance: ["ambulancePageTitle", "ambulancePageCopy"],
+    Blood: ["bloodPageTitle", "bloodPageCopy"],
+    About: ["howPageTitle", "howPageCopy"],
+    Contact: ["contactPageTitle", "contactPageCopy"],
+    "Log in": ["loginPageTitle", "loginPageCopy"],
+    "Sign up": ["signupPageTitle", "signupPageCopy"],
+    "Product Dashboard": ["profilePageTitle", "profilePageCopy"]
+  };
+  const fields = map[pageKey];
+  if (!fields) return;
+  const [titleKey, copyKey] = fields;
+  const title = qs("[data-editable-page-title]") || qs("main .section-title");
+  const copy = qs("[data-editable-page-copy]") || qs("main .section-copy");
+  if (title && settings[titleKey]) title.textContent = settings[titleKey];
+  if (copy && settings[copyKey]) copy.textContent = settings[copyKey];
+}
+
+function renderStats() {
+  const grid = qs("#statsGrid");
+  if (!grid) return;
+  const stats = Array.isArray(state.settings.stats) && state.settings.stats.length ? state.settings.stats : fallbackSettings.stats;
+  grid.innerHTML = stats
+    .slice(0, 4)
+    .map((stat) => `<article class="stat-card"><strong>${escapeHtml(stat.value)}</strong><span>${escapeHtml(stat.label)}</span></article>`)
+    .join("");
+}
+
+function isServiceDetailPath() {
+  return Boolean(getServiceSlug());
+}
+
+function renderServices() {
+  const grid = qs("#servicesGrid");
+  const listSection = qs("#servicesListSection");
+  const detailSection = qs("#serviceDetailSection");
+  const isDetail = isServiceDetailPath();
+
+  if (listSection) listSection.hidden = isDetail;
+  if (detailSection) detailSection.hidden = !isDetail;
+  if (!grid || isDetail) return;
+
+  const services = getServiceDefinitions();
+
+  grid.innerHTML = services
+    .slice(0, 10)
+    .map((service) => `
+      <a class="service-card service-card-simple service-card-link" href="${serviceUrl(service.name)}" aria-label="Open ${escapeHtml(service.name)} service details">
+        ${renderServiceIcon(service.icon, service.name)}
+        <h3>${escapeHtml(service.name)}</h3>
+        ${service.description ? `<p class="service-card-description">${escapeHtml(service.description)}</p>` : ""}
+        <span class="service-card-more">View details →</span>
+      </a>
+    `)
+    .join("");
+}
+
+function renderServiceDetailPage() {
+  const container = qs("#serviceDetailPage");
+  if (!container || !isServiceDetailPath()) return;
+  const slug = getServiceSlug();
+  const service = getServiceDefinitions().find((item) => item.slug === slug || item.name.toLowerCase() === String(slug || "").toLowerCase());
+  if (!service) {
+    container.innerHTML = `
+      <div class="empty-state">
+        <h2>Service not found</h2>
+        <p>This service page is not available right now.</p>
+      </div>
+    `;
+    return;
+  }
+  document.title = `${service.name} | ${state.settings.siteName || fallbackSettings.siteName}`;
+  const message = encodeURIComponent(`Hello ${state.settings.siteName || "Medicare At Home"}, I need ${service.name} service.`);
+  const whatsapp = normalizeWhatsApp(state.settings.whatsapp || state.settings.phones?.[0] || fallbackSettings.whatsapp);
+  container.innerHTML = `
+    <article class="service-detail-card doctor-page-card">
+      <div class="doctor-detail-head">
+        ${renderServiceIcon(service.icon, service.name)}
+        <div>
+          <p class="section-kicker">Service Details</p>
+          <h2>${escapeHtml(service.name)}</h2>
+          <p class="doctor-specialty">Home visit medical service</p>
+        </div>
+      </div>
+      <p class="doctor-detail-bio">${escapeHtml(service.description || "Contact us by WhatsApp or phone to confirm availability, patient condition and appointment time.")}</p>
+      <div class="doctor-detail-grid">
+        <div class="detail-row"><small>Booking</small><strong>WhatsApp or phone confirmation</strong></div>
+        <div class="detail-row"><small>Service area</small><strong>${escapeHtml(normalizeDisplayLocation(state.settings.location || fallbackSettings.location))}</strong></div>
+      </div>
+      <div class="card-actions detail-actions">
+        ${whatsapp ? `<a class="btn btn-primary" href="https://wa.me/${whatsapp}?text=${message}" target="_blank" rel="noopener noreferrer">Book this service</a>` : ""}
+      </div>
+    </article>
+  `;
+}
+
+function renderFilters() {
+  const select = qs("#serviceFilter");
+  if (!select) return;
+  const services = [...new Set(state.doctors.flatMap((doctor) => doctor.services || []))].sort();
+  select.innerHTML = `<option value="">All services</option>` + services
+    .map((service) => `<option value="${escapeHtml(service)}">${escapeHtml(service)}</option>`)
+    .join("");
+  select.value = state.service;
+}
+
+function doctorMatches(doctor) {
+  if (doctor.isActive === false) return false;
+
+  const query = state.query.trim().toLowerCase();
+  if (query && !String(doctor.name || "").toLowerCase().includes(query)) {
+    return false;
+  }
+
+  return true;
+}
+
+function renderDoctors() {
+  const grid = qs("#doctorsGrid");
+  if (!grid) return;
+  const filtered = state.doctors.filter(doctorMatches);
+
+  if (!filtered.length) {
+    grid.innerHTML = `<div class="empty-state">${state.query ? "No doctor found with that name." : "No doctor information found. Please contact directly."}</div>`;
+    return;
+  }
+
+  state.visibleDoctors = filtered.sort((a, b) => (Number(a.sortOrder) || 99) - (Number(b.sortOrder) || 99));
+  grid.innerHTML = state.visibleDoctors
+    .map(renderDoctorCard)
+    .join("");
+}
+
+function renderDoctorCard(doctor) {
+  const photo = doctor.photoUrl
+    ? `<img src="${escapeHtml(doctor.photoUrl)}" alt="${escapeHtml(doctor.name || "Doctor")}" loading="lazy" decoding="async" />`
+    : `<span>${escapeHtml(initials(doctor.name))}</span>`;
+
+  return `
+    <a class="doctor-card doctor-card-compact doctor-store-card" href="${doctorUrl(doctor)}" aria-label="View full details for ${escapeHtml(doctor.name || "Medical Professional")}">
+      <div class="doctor-card-photo ${doctor.photoUrl ? "has-photo" : "doctor-card-photo-empty"}">${photo}</div>
+      <div class="store-card-body doctor-card-body">
+        <h3 class="doctor-name">${escapeHtml(doctor.name || "Medical Professional")}</h3>
+        <p class="doctor-specialty">${escapeHtml([doctor.designation, doctor.specialty || "Home Medical Care"].filter(Boolean).join(" • "))}</p>
+      </div>
+    </a>
+  `;
+}
+
+function renderAppointmentDoctorCard(doctor, weekday) {
+  const photo = doctor.photoUrl
+    ? `<img src="${escapeHtml(doctor.photoUrl)}" alt="${escapeHtml(doctor.name || "Doctor")}" loading="lazy" decoding="async" />`
+    : `<span>${escapeHtml(initials(doctor.name))}</span>`;
+  const matched = matchingDoctorChambers(doctor, weekday);
+  const availability = matched.length
+    ? matched.map((item) => `${item.location} • ${item.time}`).join(" • ")
+    : `${weekday} appointment available`;
+
+  return `
+    <a class="doctor-card doctor-card-compact doctor-store-card appointment-doctor-card" href="${doctorUrl(doctor)}" aria-label="View full details for ${escapeHtml(doctor.name || "Medical Professional")}">
+      <div class="doctor-card-photo ${doctor.photoUrl ? "has-photo" : "doctor-card-photo-empty"}">${photo}</div>
+      <div class="store-card-body doctor-card-body">
+        <h3 class="doctor-name">${escapeHtml(doctor.name || "Medical Professional")}</h3>
+        <p class="doctor-specialty">${escapeHtml([doctor.designation, doctor.specialty || "Home Medical Care"].filter(Boolean).join(" • "))}</p>
+        <p class="doctor-availability-mini">${escapeHtml(availability)}</p>
+      </div>
+    </a>
+  `;
+}
+
+function renderAppointmentDoctors() {
+  const grid = qs("#appointmentDoctorsGrid");
+  if (!grid) return;
+
+  const selected = normalizeAppointmentWeekday(state.appointmentWeekday || getAppointmentWeekdayFromUrl());
+  state.appointmentWeekday = selected;
+
+  const select = qs("#appointmentWeekdaySelect");
+  if (select) select.value = selected;
+
+  const intro = qs("#appointmentResultsIntro");
+  if (!selected) {
+    if (intro) intro.textContent = "Choose a weekday and tap Find.";
+    grid.innerHTML = `<div class="empty-state">Choose a weekday to find available doctors.</div>`;
+    return;
+  }
+
+  const filtered = state.doctors
+    .filter((doctor) => doctorAvailableOnWeekday(doctor, selected))
+    .sort((a, b) => (Number(a.sortOrder) || 99) - (Number(b.sortOrder) || 99));
+
+  if (intro) {
+    intro.textContent = filtered.length
+      ? `${filtered.length} doctor${filtered.length === 1 ? "" : "s"} available on ${selected}.`
+      : `No doctors are available on ${selected} right now.`;
+  }
+
+  if (!filtered.length) {
+    grid.innerHTML = `<div class="empty-state">No doctors are available on ${escapeHtml(selected)} right now. Try another weekday.</div>`;
+    return;
+  }
+
+  grid.innerHTML = filtered.map((doctor) => renderAppointmentDoctorCard(doctor, selected)).join("");
+}
+
+function renderDoctorDetails(doctor) {
+  const phone = normalizePhone(doctor.phone || state.settings.phones?.[0] || "");
+  const whatsapp = normalizeWhatsApp(doctor.whatsapp || doctor.phone || state.settings.whatsapp || state.settings.phones?.[0] || "");
+  const message = encodeURIComponent(`Hello, I want to book home medical service with ${doctor.name || "Medicare At Home"}.`);
+  const photo = doctor.photoUrl
+    ? `<img src="${escapeHtml(doctor.photoUrl)}" alt="${escapeHtml(doctor.name)}" loading="lazy" />`
+    : escapeHtml(initials(doctor.name));
+
+  return `
+    <div class="doctor-detail-head">
+      <div class="avatar detail-avatar">${photo}</div>
+      <div>
+        <p class="section-kicker">Doctor</p>
+        <h2 id="doctorDetailTitle">${escapeHtml(doctor.name || "Medical Professional")}</h2>
+        <p class="doctor-specialty">${escapeHtml([doctor.designation, doctor.specialty || "Home Medical Care"].filter(Boolean).join(" • "))}</p>
+      </div>
+    </div>
+    <p class="doctor-detail-bio">${escapeHtml(doctor.bio || "Contact for home visit medical service details and appointment confirmation.")}</p>
+    <div class="doctor-detail-grid">
+      ${doctor.designation ? `<div class="detail-row"><small>Designation</small><strong>${escapeHtml(doctor.designation)}</strong></div>` : ""}
+      ${doctor.degrees ? `<div class="detail-row"><small>Degrees</small><strong>${escapeHtml(doctor.degrees)}</strong></div>` : ""}
+      ${doctor.hospital ? `<div class="detail-row"><small>Organization</small><strong>${escapeHtml(doctor.hospital)}</strong></div>` : ""}
+      ${phone ? `<div class="detail-row"><small>Phone</small><strong>${escapeHtml(doctor.phone || phone)}</strong></div>` : ""}
+    </div>
+    ${renderDoctorChambers(doctor)}
+    <div class="card-actions detail-actions">
+      ${whatsapp ? `<a class="btn btn-primary" href="https://wa.me/${whatsapp}?text=${message}" target="_blank" rel="noopener noreferrer">WhatsApp Appointment</a>` : ""}
+      ${phone ? `<a class="btn btn-ghost" href="tel:${phone}">Call Now</a>` : ""}
+    </div>
+  `;
+}
+
+function renderDoctorPage() {
+  const container = qs("#doctorDetailPage");
+  if (!container) return;
+
+  const slug = window.location.pathname.split("/").filter(Boolean).slice(1).join("/");
+  const doctor = state.doctors.find((item) => doctorMatchesSlug(item, slug));
+
+  if (!doctor) {
+    container.innerHTML = `
+      <div class="empty-state">
+        <h2>Doctor not found</h2>
+        <p>This doctor profile is not available right now.</p>
+      </div>
+    `;
+    return;
+  }
+
+  document.title = `${doctor.name || "Doctor Details"} | ${state.settings.siteName || fallbackSettings.siteName}`;
+  container.innerHTML = `
+    <article class="doctor-page-card">
+      ${renderDoctorDetails(doctor)}
+    </article>
+  `;
+}
+
+function renderBloodList() {
+  const grid = qs("#bloodGrid");
+  const listSection = qs("#bloodListSection");
+  if (isBloodDetailPath()) {
+    if (listSection) listSection.hidden = true;
+    return;
+  }
+  if (listSection) listSection.hidden = false;
+  if (!grid) return;
+
+  const profiles = sortBloodProfiles(Array.isArray(state.bloodProfiles) ? state.bloodProfiles : [])
+    .filter(bloodProfileMatches);
+
+  if (!profiles.length) {
+    grid.innerHTML = `<div class="empty-state">${state.bloodQuery ? "No blood profile found with that search." : "No approved blood information found yet."}</div>`;
+    return;
+  }
+
+  grid.innerHTML = profiles
+    .map((profile) => `
+      <a class="doctor-card doctor-card-compact blood-person-card" href="${bloodUrl(profile)}" aria-label="View blood details for ${escapeHtml(profile.fullName || "Blood Donor")}">
+        <div class="doctor-top">
+          <div class="avatar blood-avatar" aria-hidden="true">🩸</div>
+          <div>
+            <h3 class="doctor-name">${escapeHtml(profile.fullName || "Blood Donor")}</h3>
+            <p class="doctor-specialty blood-group-label">${escapeHtml(profile.bloodGroup || "Blood group")}</p>
+          </div>
+        </div>
+      </a>
+    `)
+    .join("");
+}
+
+async function fetchBloodProfileBySlug(slug) {
+  const idMatch = String(slug || "").match(/^\d+/);
+  if (idMatch) {
+    try {
+      const data = await fetchJson(`/api/blood/${encodeURIComponent(idMatch[0])}?fresh=${Date.now()}`, { cache: "no-store" });
+      if (data.profile) return data.profile;
+    } catch (error) {
+      console.warn(error);
+    }
+  }
+  return state.bloodProfiles.find((item) => bloodMatchesSlug(item, slug));
+}
+
+function renderBloodDetail(profile) {
+  const genderLabel = formatGender(profile);
+  const adminNumber = "8801609672748";
+  const adminMessage = encodeURIComponent(`Hello Admin, I need contact information for ${profile.fullName || "this blood person"}. Blood Group: ${profile.bloodGroup || "N/A"}.`);
+  const whatsapp = normalizeWhatsApp(profile.whatsapp || profile.phone || "");
+  const phone = normalizePhone(profile.phone || "");
+
+  return `
+    <article class="blood-detail-card">
+      <div class="blood-detail-head">
+        <span class="blood-detail-icon" aria-hidden="true">🩸</span>
+        <div>
+          <p class="section-kicker">Blood profile</p>
+          <h2>${escapeHtml(profile.fullName || "Blood Person")}</h2>
+          <p class="blood-group-large">${escapeHtml(profile.bloodGroup || "")}</p>
+        </div>
+      </div>
+      <div class="doctor-detail-grid blood-info-grid">
+        <div class="detail-row"><small>Full Name</small><strong>${escapeHtml(profile.fullName || "")}</strong></div>
+        <div class="detail-row"><small>Blood Group</small><strong>${escapeHtml(profile.bloodGroup || "")}</strong></div>
+        ${genderLabel ? `<div class="detail-row"><small>Gender</small><strong>${escapeHtml(genderLabel)}</strong></div>` : ""}
+        ${profile.contactAdminRequired ? `
+          <div class="detail-row full"><small>Privacy protected</small><strong>Contact details are hidden. Please contact admin.</strong></div>
+        ` : `
+          ${phone ? `<div class="detail-row"><small>Phone</small><strong>${escapeHtml(profile.phone || phone)}</strong></div>` : ""}
+          ${whatsapp ? `<div class="detail-row"><small>WhatsApp</small><strong>${escapeHtml(profile.whatsapp || whatsapp)}</strong></div>` : ""}
+          ${profile.homeAddress ? `<div class="detail-row full"><small>Home Address</small><strong>${escapeHtml(profile.homeAddress)}</strong></div>` : ""}
+        `}
+      </div>
+      <div class="card-actions detail-actions">
+        ${profile.contactAdminRequired ? `<a class="btn btn-primary" href="https://wa.me/${adminNumber}?text=${adminMessage}" target="_blank" rel="noopener noreferrer">Contact Admin</a>` : ""}
+        ${!profile.contactAdminRequired && whatsapp ? `<a class="btn btn-primary" href="https://wa.me/${whatsapp}" target="_blank" rel="noopener noreferrer">WhatsApp</a>` : ""}
+        ${!profile.contactAdminRequired && phone ? `<a class="btn btn-ghost" href="tel:${phone}">Call</a>` : ""}
+      </div>
+    </article>
+  `;
+}
+
+async function renderBloodPage() {
+  const container = qs("#bloodDetailPage");
+  const detailSection = qs("#bloodDetailSection");
+  if (!container) return;
+
+  const slug = getBloodDetailSlug();
+  if (!slug) {
+    if (detailSection) detailSection.hidden = true;
+    return;
+  }
+
+  if (detailSection) detailSection.hidden = false;
+
+  let profile = null;
+  try {
+    profile = await fetchBloodProfileBySlug(slug);
+  } catch (error) {
+    console.warn(error);
+  }
+
+  if (!profile) {
+    container.innerHTML = `
+      <div class="empty-state">
+        <h2>Blood profile not found</h2>
+        <p>This profile is not approved or not available right now.</p>
+      </div>
+    `;
+    return;
+  }
+
+  document.title = `${profile.fullName || "Blood Details"} | ${state.settings.siteName || fallbackSettings.siteName}`;
+  container.innerHTML = renderBloodDetail(profile);
+}
+
+function getBloodFormPayload() {
+  return {
+    fullName: qs("#bloodFullName")?.value.trim() || "",
+    bloodGroup: qs("#bloodGroup")?.value.trim() || "",
+    gender: qs("#bloodGender")?.value.trim() || "",
+    customGender: qs("#bloodCustomGender")?.value.trim() || "",
+    phone: qs("#bloodPhone")?.value.trim() || "",
+    whatsapp: qs("#bloodWhatsapp")?.value.trim() || "",
+    homeAddress: qs("#bloodHomeAddress")?.value.trim() || ""
+  };
+}
+
+function initBloodForm() {
+  const form = qs("#bloodSubmitForm");
+  const gender = qs("#bloodGender");
+  const customGroup = qs("#customGenderGroup");
+  const customInput = qs("#bloodCustomGender");
+
+  function syncGender() {
+    const isOther = gender?.value === "other";
+    customGroup?.classList.toggle("hidden", !isOther);
+    if (customInput) customInput.required = Boolean(isOther);
+    if (!isOther && customInput) customInput.value = "";
+  }
+
+  gender?.addEventListener("change", syncGender);
+  syncGender();
+
+  form?.addEventListener("submit", async (event) => {
+    event.preventDefault();
+    try {
+      await fetchJsonPost("/api/blood", getBloodFormPayload());
+      form.reset();
+      syncGender();
+      toast("Submitted successfully. It will show after admin approval.");
+      setTimeout(() => { window.location.href = "/Blood"; }, 900);
+    } catch (error) {
+      toast(error.message || "Could not submit blood information.");
+    }
+  });
+}
+
+async function fetchJsonPost(url, body) {
+  const response = await fetch(url, {
+    method: "POST",
+    headers: { accept: "application/json", "content-type": "application/json" },
+    body: JSON.stringify(body)
+  });
+  const data = await response.json().catch(() => ({}));
+  if (!response.ok) throw new Error(data.error || `Request failed: ${response.status}`);
+  return data;
+}
+
+function ambulanceNumber(value = "") {
+  return normalizePhone(value || fallbackSettings.ambulancePhone);
+}
+
+function renderAmbulancePage() {
+  const container = qs("#ambulancePage");
+  if (!container) return;
+  const settings = state.settings || fallbackSettings;
+  const phone = ambulanceNumber(settings.ambulancePhone || fallbackSettings.ambulancePhone);
+  const whatsapp = normalizeWhatsApp(settings.ambulanceWhatsapp || settings.ambulancePhone || fallbackSettings.ambulanceWhatsapp);
+  const message = encodeURIComponent(`Hello ${settings.siteName || "Medicare At Home"}, I need an ambulance. Pickup: `);
+  qsa("[data-ambulance-phone]").forEach((node) => { node.textContent = settings.ambulancePhone || fallbackSettings.ambulancePhone; });
+  qsa("[data-ambulance-description]").forEach((node) => { node.textContent = settings.ambulanceDescription || fallbackSettings.ambulanceDescription; });
+  qsa("[data-ambulance-call]").forEach((link) => { link.href = phone ? `tel:${phone}` : "/Contact"; });
+  qsa("[data-ambulance-whatsapp]").forEach((link) => {
+    link.href = whatsapp ? `https://wa.me/${whatsapp}?text=${message}` : "/Contact";
+    link.target = whatsapp ? "_blank" : "";
+    link.rel = whatsapp ? "noopener noreferrer" : "";
+  });
+}
+
+function getAmbulanceFormPayload() {
+  return {
+    fullName: qs("#ambulanceName")?.value.trim() || "",
+    phone: qs("#ambulancePhone")?.value.trim() || "",
+    pickup: qs("#ambulancePickup")?.value.trim() || "",
+    destination: qs("#ambulanceDestination")?.value.trim() || "",
+    patientCondition: qs("#ambulanceCondition")?.value.trim() || ""
+  };
+}
+
+function initAmbulanceForm() {
+  const form = qs("#ambulanceRequestForm");
+  if (!form) return;
+  form.addEventListener("submit", async (event) => {
+    event.preventDefault();
+    try {
+      await fetchJsonPost("/api/ambulance", getAmbulanceFormPayload());
+      toast("Ambulance request sent to admin.");
+      form.reset();
+    } catch (error) {
+      toast(error.message || "Could not send ambulance request.");
+    }
+  });
+}
+
+function renderContact() {
+  const settings = state.settings;
+  const contactList = qs("#contactList");
+  if (!contactList) return;
+  const phones = Array.isArray(settings.phones) && settings.phones.length ? settings.phones : fallbackSettings.phones;
+  const rows = [
+    ...phones.map((phone) => ({ icon: "☎", label: "Phone", value: phone, href: `tel:${normalizePhone(phone)}` })),
+    { icon: "💬", label: "WhatsApp", value: settings.whatsapp || fallbackSettings.whatsapp, href: `https://wa.me/${normalizeWhatsApp(settings.whatsapp || fallbackSettings.whatsapp)}` },
+    { icon: "📍", label: "Service area", value: normalizeDisplayLocation(settings.location || fallbackSettings.location), href: "/Contact" }
+  ];
+
+
+  if (Array.isArray(settings.socialLinks)) {
+    settings.socialLinks.forEach((item) => {
+      const label = String(item?.label || "Social").trim();
+      const rawUrl = String(item?.url || "").trim();
+      if (!rawUrl) return;
+      const href = /^https?:\/\//i.test(rawUrl) ? rawUrl : `https://${rawUrl.replace(/^\/\//, "")}`;
+      rows.push({ icon: "↗", label, value: rawUrl.replace(/^https?:\/\//i, ""), href });
+    });
+  }
+
+  contactList.innerHTML = rows
+    .map((row) => `
+      <a class="contact-item contact-item-no-icon" href="${escapeHtml(row.href)}" ${row.href.startsWith("http") ? 'target="_blank" rel="noopener noreferrer"' : ""}>
+        <span class="contact-text"><small>${escapeHtml(row.label)}</small><strong>${escapeHtml(row.value)}</strong></span>
+      </a>
+    `)
+    .join("");
+}
+
+function applyTheme(theme) {
+  const nextTheme = theme === "dark" ? "dark" : "light";
+  document.documentElement.dataset.theme = nextTheme;
+  qs('meta[name="theme-color"]')?.setAttribute("content", nextTheme === "dark" ? "#101815" : "#f6f7fb");
+  qsa("#themeToggle").forEach((button) => {
+    const isDark = nextTheme === "dark";
+    button.setAttribute("aria-pressed", String(isDark));
+    button.setAttribute("aria-label", isDark ? "Switch to light mode" : "Switch to dark mode");
+    const icon = qs(".theme-toggle-icon", button);
+    const text = qs(".theme-toggle-text", button);
+    if (icon) icon.textContent = isDark ? "☀" : "☾";
+    if (text) text.textContent = isDark ? "Light mode" : "Dark mode";
+  });
+}
+
+function initTheme() {
+  let savedTheme = "light";
+  try {
+    savedTheme = localStorage.getItem("medicare-theme") || "light";
+  } catch (error) {
+    savedTheme = "light";
+  }
+  applyTheme(savedTheme);
+
+  qsa("#themeToggle").forEach((button) => {
+    button.addEventListener("click", () => {
+      const current = document.documentElement.dataset.theme === "dark" ? "dark" : "light";
+      const nextTheme = current === "dark" ? "light" : "dark";
+      try {
+        localStorage.setItem("medicare-theme", nextTheme);
+      } catch (error) {
+        console.warn(error);
+      }
+      applyTheme(nextTheme);
+    });
+  });
+}
+
+
+function initMenu() {
+  const button = qs("#menuButton");
+  const links = qs("#navLinks");
+  if (!button || !links) return;
+
+  const closeMenu = () => {
+    links.classList.remove("is-open");
+    button.classList.remove("is-open");
+    button.setAttribute("aria-expanded", "false");
+  };
+
+  let scrollStart = window.scrollY || document.documentElement.scrollTop || 0;
+
+  button.addEventListener("click", () => {
+    const isOpen = links.classList.toggle("is-open");
+    button.classList.toggle("is-open", isOpen);
+    button.setAttribute("aria-expanded", String(isOpen));
+    if (isOpen) scrollStart = window.scrollY || document.documentElement.scrollTop || 0;
+  });
+
+  links.addEventListener("click", (event) => {
+    if (event.target.matches("a")) closeMenu();
+  });
+
+  window.addEventListener("scroll", () => {
+    if (!links.classList.contains("is-open")) return;
+    const currentScroll = window.scrollY || document.documentElement.scrollTop || 0;
+    if (Math.abs(currentScroll - scrollStart) > 4) closeMenu();
+  }, { passive: true });
+}
+
+function initAppointmentFinder() {
+  const initialWeekday = getAppointmentWeekdayFromUrl();
+  if (initialWeekday) state.appointmentWeekday = initialWeekday;
+
+  const homeForm = qs("#doctorAppointmentForm");
+  const homeSelect = qs("#homeAppointmentWeekday");
+  if (homeSelect && state.appointmentWeekday) homeSelect.value = state.appointmentWeekday;
+  if (homeForm && !homeForm.dataset.ready) {
+    homeForm.dataset.ready = "true";
+    homeForm.addEventListener("submit", (event) => {
+      event.preventDefault();
+      const weekday = normalizeAppointmentWeekday(homeSelect?.value || "");
+      if (!weekday) {
+        toast("Please choose a weekday first.");
+        homeSelect?.focus();
+        return;
+      }
+      window.location.href = `/doctor-appointment?weekday=${encodeURIComponent(weekday)}`;
+    });
+  }
+
+  const pageForm = qs("#appointmentWeekdayForm");
+  const pageSelect = qs("#appointmentWeekdaySelect");
+  if (pageSelect && state.appointmentWeekday) pageSelect.value = state.appointmentWeekday;
+  if (pageForm && !pageForm.dataset.ready) {
+    pageForm.dataset.ready = "true";
+    pageForm.addEventListener("submit", (event) => {
+      event.preventDefault();
+      const weekday = normalizeAppointmentWeekday(pageSelect?.value || "");
+      if (!weekday) {
+        toast("Please choose a weekday first.");
+        pageSelect?.focus();
+        return;
+      }
+      state.appointmentWeekday = weekday;
+      const nextUrl = `/doctor-appointment?weekday=${encodeURIComponent(weekday)}`;
+      if (window.location.pathname.replace(/\/+$/, "").toLowerCase() === "/doctor-appointment") {
+        window.history.pushState({}, "", nextUrl);
+        renderAppointmentDoctors();
+      } else {
+        window.location.href = nextUrl;
+      }
+    });
+  }
+}
+
+function initFilters() {
+  const doctorSearch = qs("#doctorSearch");
+  if (doctorSearch) {
+    doctorSearch.value = state.query;
+    doctorSearch.addEventListener("input", () => {
+      state.query = doctorSearch.value;
+      renderDoctors();
+    });
+  }
+
+  const bloodSearch = qs("#bloodSearch");
+  if (bloodSearch) {
+    bloodSearch.value = state.bloodQuery;
+    bloodSearch.addEventListener("input", () => {
+      state.bloodQuery = bloodSearch.value;
+      renderBloodList();
+    });
+  }
+}
+
+initTheme();
+initMenu();
+initFilters();
+initAppointmentFinder();
+initBloodForm();
+initAmbulanceForm();
+initLocationPermissionButtons();
+initPasswordVisibilityToggles();
+loadData();

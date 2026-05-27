@@ -1,0 +1,8 @@
+name = "medicare-at-home"
+compatibility_date = "2025-09-23"
+compatibility_flags = ["nodejs_compat"]
+pages_build_output_dir = "public"
+
+# Do not place real secrets here.
+# Add them in Cloudflare Pages > Settings > Environment variables,
+# or locally in .dev.vars.
