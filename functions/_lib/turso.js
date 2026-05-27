@@ -9,6 +9,19 @@ function safeJsonParse(value, fallback) {
   }
 }
 
+
+function isRemovedAppointmentFlowText(value = "") {
+  const text = String(value || "").trim().toLowerCase().replace(/\s+/g, " ");
+  return text === "simple appointment flow"
+    || text.includes("simple appointment flow")
+    || text.includes("contact the team, confirm the patient details")
+    || text.includes("then receive the requested home visit service");
+}
+
+function cleanRemovedAppointmentFlowText(value, fallback) {
+  return isRemovedAppointmentFlowText(value) ? fallback : value;
+}
+
 function toIsoText(value) {
   if (!value) return new Date().toISOString();
   if (value instanceof Date) return value.toISOString();
@@ -107,8 +120,8 @@ export function rowToSettings(row) {
     ambulanceWhatsapp: row.ambulanceWhatsapp || "+8801609672748",
     bloodPageTitle: row.bloodPageTitle || "Available blood people",
     bloodPageCopy: row.bloodPageCopy || "Tap a card to view full details. Female contact details are protected and only available through admin.",
-    howPageTitle: row.howPageTitle || "About Medicare At Home",
-    howPageCopy: row.howPageCopy || "Meet the Medicare At Home team and read published updates.",
+    howPageTitle: cleanRemovedAppointmentFlowText(row.howPageTitle, "About Medicare At Home") || "About Medicare At Home",
+    howPageCopy: cleanRemovedAppointmentFlowText(row.howPageCopy, "Meet the Medicare At Home team and read published updates.") || "Meet the Medicare At Home team and read published updates.",
     contactPageTitle: row.contactPageTitle || "Need service today?",
     contactPageCopy: row.contactPageCopy || "Use WhatsApp for the fastest booking. For emergency conditions, call local emergency services first.",
     loginPageTitle: row.loginPageTitle || "Log in",
@@ -206,8 +219,8 @@ function settingsRecord(settings) {
     ambulanceWhatsapp: settings.ambulanceWhatsapp || "+8801609672748",
     bloodPageTitle: settings.bloodPageTitle || "Available blood people",
     bloodPageCopy: settings.bloodPageCopy || "Tap a card to view full details. Female contact details are protected and only available through admin.",
-    howPageTitle: settings.howPageTitle || "About Medicare At Home",
-    howPageCopy: settings.howPageCopy || "Meet the Medicare At Home team and read published updates.",
+    howPageTitle: cleanRemovedAppointmentFlowText(settings.howPageTitle, "About Medicare At Home") || "About Medicare At Home",
+    howPageCopy: cleanRemovedAppointmentFlowText(settings.howPageCopy, "Meet the Medicare At Home team and read published updates.") || "Meet the Medicare At Home team and read published updates.",
     contactPageTitle: settings.contactPageTitle || "Need service today?",
     contactPageCopy: settings.contactPageCopy || "Use WhatsApp for the fastest booking. For emergency conditions, call local emergency services first.",
     loginPageTitle: settings.loginPageTitle || "Log in",

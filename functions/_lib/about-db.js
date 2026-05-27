@@ -95,10 +95,23 @@ function rowToProfile(row) {
 }
 
 
+function isRemovedAppointmentFlowText(value = "") {
+  const text = String(value || "").trim().toLowerCase().replace(/\s+/g, " ");
+  return text === "simple appointment flow"
+    || text.includes("simple appointment flow")
+    || text.includes("contact the team, confirm the patient details")
+    || text.includes("then receive the requested home visit service");
+}
+
 function isRemovedAppointmentFlowItem(item = {}) {
-  const title = String(item.title || item.name || "").trim().toLowerCase();
-  const body = String(item.content || item.bio || "").trim().toLowerCase();
-  return title === "simple appointment flow" || body.includes("contact the team, confirm the patient details, then receive the requested home visit service");
+  return [
+    item.title,
+    item.name,
+    item.excerpt,
+    item.content,
+    item.description,
+    item.bio
+  ].some(isRemovedAppointmentFlowText);
 }
 
 function rowToPost(row) {

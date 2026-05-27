@@ -612,7 +612,7 @@ async function loadData() {
   renderAll();
 
   try {
-    const settingsResponse = await fetchJson("/api/settings");
+    const settingsResponse = await fetchJson(`/api/settings?fresh=${Date.now()}`, { cache: "no-store" });
     state.settings = { ...fallbackSettings, ...(settingsResponse.settings || {}) };
     writePublicCache("settings", settingsResponse);
 
@@ -656,17 +656,34 @@ function renderAll() {
 }
 
 
+function isRemovedAppointmentFlowText(value = "") {
+  const text = String(value || "").trim().toLowerCase().replace(/\s+/g, " ");
+  return text === "simple appointment flow"
+    || text.includes("simple appointment flow")
+    || text.includes("contact the team, confirm the patient details")
+    || text.includes("then receive the requested home visit service");
+}
+
+function cleanRemovedAppointmentFlowText(value = "", fallback = "") {
+  return isRemovedAppointmentFlowText(value) ? fallback : value;
+}
+
 function isRemovedAppointmentFlowItem(item = {}) {
-  const title = String(item.title || item.name || "").trim().toLowerCase();
-  const body = String(item.content || item.bio || "").trim().toLowerCase();
-  return title === "simple appointment flow" || body.includes("contact the team, confirm the patient details, then receive the requested home visit service");
+  return [
+    item.title,
+    item.name,
+    item.excerpt,
+    item.content,
+    item.description,
+    item.bio
+  ].some(isRemovedAppointmentFlowText);
 }
 
 function renderAboutPage() {
   const profilesGrid = qs("#aboutProfilesGrid");
   const postsGrid = qs("#aboutPostsGrid");
   if (profilesGrid) {
-    const profiles = Array.isArray(state.aboutProfiles) ? state.aboutProfiles : [];
+    const profiles = (Array.isArray(state.aboutProfiles) ? state.aboutProfiles : []).filter((profile) => !isRemovedAppointmentFlowItem(profile));
     profilesGrid.innerHTML = profiles.length
       ? profiles.map((profile) => `
         <article class="about-profile-card">
@@ -681,7 +698,7 @@ function renderAboutPage() {
       : `<div class="empty-state">Team profiles will appear here after admin publishes them.</div>`;
   }
   if (postsGrid) {
-    const posts = Array.isArray(state.aboutPosts) ? state.aboutPosts : [];
+    const posts = (Array.isArray(state.aboutPosts) ? state.aboutPosts : []).filter((post) => !isRemovedAppointmentFlowItem(post));
     postsGrid.innerHTML = posts.length
       ? posts.map((post) => `
         <article class="about-post-card">
@@ -774,8 +791,16 @@ function renderEditablePageText(settings = state.settings) {
   const [titleKey, copyKey] = fields;
   const title = qs("[data-editable-page-title]") || qs("main .section-title");
   const copy = qs("[data-editable-page-copy]") || qs("main .section-copy");
-  if (title && settings[titleKey]) title.textContent = settings[titleKey];
-  if (copy && settings[copyKey]) copy.textContent = settings[copyKey];
+  let titleText = settings[titleKey];
+  let copyText = settings[copyKey];
+
+  if (pageKey === "About") {
+    titleText = cleanRemovedAppointmentFlowText(titleText, fallbackSettings.howPageTitle);
+    copyText = cleanRemovedAppointmentFlowText(copyText, fallbackSettings.howPageCopy);
+  }
+
+  if (title && titleText) title.textContent = titleText;
+  if (copy && copyText) copy.textContent = copyText;
 }
 
 function renderStats() {

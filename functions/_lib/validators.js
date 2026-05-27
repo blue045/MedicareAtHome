@@ -5,6 +5,19 @@ function cleanText(value, max = 500) {
     .slice(0, max);
 }
 
+
+function isRemovedAppointmentFlowText(value = "") {
+  const text = String(value || "").trim().toLowerCase().replace(/\s+/g, " ");
+  return text === "simple appointment flow"
+    || text.includes("simple appointment flow")
+    || text.includes("contact the team, confirm the patient details")
+    || text.includes("then receive the requested home visit service");
+}
+
+function cleanRemovedAppointmentFlowText(value, fallback) {
+  return isRemovedAppointmentFlowText(value) ? fallback : value;
+}
+
 function cleanList(value, maxItems = 12) {
   if (Array.isArray(value)) {
     return value.map((item) => cleanText(item, 90)).filter(Boolean).slice(0, maxItems);
@@ -198,8 +211,8 @@ export function normalizeSettings(input, existing = {}) {
     ambulanceWhatsapp: cleanPhone(input.ambulanceWhatsapp) || safeExisting.ambulanceWhatsapp || "+8801609672748",
     bloodPageTitle: cleanText(input.bloodPageTitle, 240) || safeExisting.bloodPageTitle || "Available blood people",
     bloodPageCopy: cleanText(input.bloodPageCopy, 240) || safeExisting.bloodPageCopy || "Tap a card to view full details. Female contact details are protected and only available through admin.",
-    howPageTitle: cleanText(input.howPageTitle, 240) || safeExisting.howPageTitle || "About Medicare At Home",
-    howPageCopy: cleanText(input.howPageCopy, 240) || safeExisting.howPageCopy || "Meet the Medicare At Home team and read published updates.",
+    howPageTitle: cleanRemovedAppointmentFlowText(cleanText(input.howPageTitle, 240) || safeExisting.howPageTitle, "About Medicare At Home") || "About Medicare At Home",
+    howPageCopy: cleanRemovedAppointmentFlowText(cleanText(input.howPageCopy, 240) || safeExisting.howPageCopy, "Meet the Medicare At Home team and read published updates.") || "Meet the Medicare At Home team and read published updates.",
     contactPageTitle: cleanText(input.contactPageTitle, 240) || safeExisting.contactPageTitle || "Need service today?",
     contactPageCopy: cleanText(input.contactPageCopy, 240) || safeExisting.contactPageCopy || "Use WhatsApp for the fastest booking. For emergency conditions, call local emergency services first.",
     loginPageTitle: cleanText(input.loginPageTitle, 240) || safeExisting.loginPageTitle || "Log in",
