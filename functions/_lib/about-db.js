@@ -94,6 +94,13 @@ function rowToProfile(row) {
   };
 }
 
+
+function isRemovedAppointmentFlowItem(item = {}) {
+  const title = String(item.title || item.name || "").trim().toLowerCase();
+  const body = String(item.content || item.bio || "").trim().toLowerCase();
+  return title === "simple appointment flow" || body.includes("contact the team, confirm the patient details, then receive the requested home visit service");
+}
+
 function rowToPost(row) {
   if (!row) return null;
   return {
@@ -154,7 +161,17 @@ export async function listAbout(db, includeDrafts = false) {
   const profileSql = includeDrafts ? "SELECT * FROM about_profiles ORDER BY sortOrder ASC, createdAt DESC LIMIT 100" : "SELECT * FROM about_profiles WHERE isPublished != 0 ORDER BY sortOrder ASC, createdAt DESC LIMIT 100";
   const postSql = includeDrafts ? "SELECT * FROM about_posts ORDER BY createdAt DESC LIMIT 100" : "SELECT * FROM about_posts WHERE isPublished != 0 ORDER BY createdAt DESC LIMIT 100";
   const [profiles, posts] = await Promise.all([db.execute(profileSql), db.execute(postSql)]);
-  return { profiles: profiles.rows.map(rowToProfile), posts: posts.rows.map(rowToPost) };
+  const mappedProfiles = profiles.rows.map(rowToProfile);
+  const mappedPosts = posts.rows.map(rowToPost);
+
+  // Hide the old default About card from the public About section.
+  // Admin views still receive it with includeDrafts=true so it can be edited or deleted from the panel.
+  if (includeDrafts) return { profiles: mappedProfiles, posts: mappedPosts };
+
+  return {
+    profiles: mappedProfiles.filter((profile) => !isRemovedAppointmentFlowItem(profile)),
+    posts: mappedPosts.filter((post) => !isRemovedAppointmentFlowItem(post))
+  };
 }
 
 export async function createAboutProfile(db, input) {

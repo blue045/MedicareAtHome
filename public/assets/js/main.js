@@ -655,6 +655,13 @@ function renderAll() {
   renderAboutPage();
 }
 
+
+function isRemovedAppointmentFlowItem(item = {}) {
+  const title = String(item.title || item.name || "").trim().toLowerCase();
+  const body = String(item.content || item.bio || "").trim().toLowerCase();
+  return title === "simple appointment flow" || body.includes("contact the team, confirm the patient details, then receive the requested home visit service");
+}
+
 function renderAboutPage() {
   const profilesGrid = qs("#aboutProfilesGrid");
   const postsGrid = qs("#aboutPostsGrid");
