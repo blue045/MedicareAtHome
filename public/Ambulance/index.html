@@ -16,8 +16,8 @@
         }
       })();
     </script>
-    <link rel="preload" href="/assets/css/styles.css?v=ambulance-photo-fix-v1" as="style" />
-    <link rel="stylesheet" href="/assets/css/styles.css?v=ambulance-photo-fix-v1" />
+    <link rel="preload" href="/assets/css/styles.css?v=content-pages-v1" as="style" />
+    <link rel="stylesheet" href="/assets/css/styles.css?v=content-pages-v1" />
     <link rel="icon" href="/assets/img/logo.png" type="image/png" />
     <title>Ambulance | Medicare At Home</title>
   </head>
@@ -59,7 +59,7 @@
 
     <main id="main">
       <section class="section section-alt ambulance-section" id="ambulancePage">
-        <div class="container ambulance-custom-section ambulance-custom-section-top">
+        <div class="container ambulance-custom-section ambulance-custom-section-top" id="ambulanceListSection">
           <div class="section-head compact-head">
             <div>
               <p class="section-kicker">Ambulance Options</p>
@@ -70,7 +70,11 @@
           <div class="ambulance-card-grid store-grid" id="customAmbulanceGrid"><div class="loading-state">Loading ambulance options...</div></div>
         </div>
 
-        <div class="container contact-grid ambulance-grid">
+        <div class="container" id="ambulanceDetailSection" hidden>
+          <div id="ambulanceDetailPage"><div class="loading-state">Loading ambulance details...</div></div>
+        </div>
+
+        <div class="container contact-grid ambulance-grid" id="ambulanceSupportSection">
           <article class="contact-card ambulance-hero-card">
             <p class="section-kicker">Ambulance</p>
             <h1 class="section-title" data-editable-page-title>Need an ambulance?</h1>
@@ -117,7 +121,7 @@
     </div>
 
     <div class="toast" id="toast" aria-live="polite" aria-atomic="true"></div>
-    <script type="module" src="/assets/js/main.js?v=ambulance-photo-fix-v1"></script>
-    <script type="module" src="/assets/js/store.js?v=ambulance-photo-fix-v1"></script>
+    <script type="module" src="/assets/js/main.js?v=content-pages-v1"></script>
+    <script type="module" src="/assets/js/store.js?v=content-pages-v1"></script>
   </body>
 </html>

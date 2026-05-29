@@ -38,6 +38,48 @@ function cleanPhone(value) {
 
 const FIXED_DOCTOR_CONTACT = "+8801609672748";
 
+const editablePageKeys = new Set(["services", "store", "doctors", "ambulance", "hospital", "blood", "contact", "about"]);
+const pageLayoutKeys = new Set(["standard", "compact", "wide", "split", "cards-first"]);
+
+function cleanUrl(value, max = 500) {
+  const text = cleanText(value, max);
+  if (!text) return "";
+  if (text.startsWith("/") || text.startsWith("#")) return text;
+  if (/^https?:\/\//i.test(text)) return text;
+  if (/^tel:/i.test(text) || /^mailto:/i.test(text) || /^https:\/\/wa\.me\//i.test(text)) return text;
+  return "";
+}
+
+export function normalizePageContent(input, existing = {}) {
+  const source = input && typeof input === "object" && !Array.isArray(input) ? input : {};
+  const previous = existing && typeof existing === "object" && !Array.isArray(existing) ? existing : {};
+  const output = {};
+  const pickText = (incoming, old, field, max) => Object.prototype.hasOwnProperty.call(incoming, field) ? cleanText(incoming[field], max) : (old[field] || "");
+  const pickUrl = (incoming, old, field) => Object.prototype.hasOwnProperty.call(incoming, field) ? cleanUrl(incoming[field]) : (old[field] || "");
+  for (const key of editablePageKeys) {
+    const incoming = source[key] && typeof source[key] === "object" && !Array.isArray(source[key]) ? source[key] : {};
+    const old = previous[key] && typeof previous[key] === "object" && !Array.isArray(previous[key]) ? previous[key] : {};
+    const layoutSource = Object.prototype.hasOwnProperty.call(incoming, "layout") ? incoming.layout : old.layout;
+    const layoutText = cleanText(layoutSource, 40);
+    const layout = pageLayoutKeys.has(layoutText) ? layoutText : "standard";
+    output[key] = {
+      label: pickText(incoming, old, "label", 80),
+      badge: pickText(incoming, old, "badge", 80),
+      title: pickText(incoming, old, "title", 240),
+      copy: pickText(incoming, old, "copy", 500),
+      body: pickText(incoming, old, "body", 2200),
+      primaryLabel: pickText(incoming, old, "primaryLabel", 80),
+      primaryUrl: pickUrl(incoming, old, "primaryUrl"),
+      secondaryLabel: pickText(incoming, old, "secondaryLabel", 80),
+      secondaryUrl: pickUrl(incoming, old, "secondaryUrl"),
+      layout,
+      hidden: incoming.hidden === true || incoming.hidden === "true" || incoming.hidden === 1 || incoming.hidden === "1"
+    };
+  }
+  return output;
+}
+
+
 const DOCTOR_DESIGNATIONS = new Set(["Professor", "Associate Professor", "Assistant Professor", "Consultant"]);
 const DOCTOR_WEEKDAY_ORDER = ["Saturday", "Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday"];
 const DOCTOR_WEEKDAYS = new Set([...DOCTOR_WEEKDAY_ORDER, "Saturday - Thursday", "Everyday"]);
@@ -259,6 +301,7 @@ export function normalizeSettings(input, existing = {}) {
     serviceIcons: input.serviceIcons && typeof input.serviceIcons === "object" && !Array.isArray(input.serviceIcons) ? cleanServiceIcons(input.serviceIcons) : (safeExisting.serviceIcons || {}),
     servicePhotos: input.servicePhotos && typeof input.servicePhotos === "object" && !Array.isArray(input.servicePhotos) ? cleanServicePhotos(input.servicePhotos) : (safeExisting.servicePhotos || {}),
     serviceDescriptions: Object.keys(cleanServiceDescriptions(input.serviceDescriptions)).length ? cleanServiceDescriptions(input.serviceDescriptions) : (safeExisting.serviceDescriptions || {}),
+    pageContent: input.pageContent && typeof input.pageContent === "object" && !Array.isArray(input.pageContent) ? normalizePageContent(input.pageContent, safeExisting.pageContent || {}) : (safeExisting.pageContent || normalizePageContent({})),
     emergencyNote: cleanText(input.emergencyNote, 700) || safeExisting.emergencyNote || "For life-threatening emergencies, contact your nearest hospital or emergency hotline immediately.",
     stats: Array.isArray(input.stats) && input.stats.length
       ? input.stats.slice(0, 4).map((stat) => ({ value: cleanText(stat.value, 20), label: cleanText(stat.label, 80) })).filter((stat) => stat.value && stat.label)

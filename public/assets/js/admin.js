@@ -224,7 +224,8 @@ const state = {
   adminModules: [],
   subAdmins: [],
   aboutProfiles: [],
-  aboutPosts: []
+  aboutPosts: [],
+  activeContentPage: "services"
 };
 
 const contentPageFields = [
@@ -261,6 +262,19 @@ const contentPageFields = [
 ];
 
 const contentPageDefaults = Object.fromEntries(contentPageFields.map(([key]) => [key, ""]));
+
+const editableContentPages = [
+  { key: "services", label: "Services", icon: "🩺", path: "/Services", nav: "navServicesLabel", title: "servicesPageTitle", copy: "servicesPageCopy" },
+  { key: "store", label: "Store", icon: "🛒", path: "/Store", nav: "navStoreLabel", title: "storePageTitle", copy: "storePageCopy" },
+  { key: "doctors", label: "Doctors", icon: "👨‍⚕️", path: "/Doctors", nav: "navDoctorsLabel", title: "doctorsPageTitle", copy: "doctorsPageCopy" },
+  { key: "ambulance", label: "Ambulance", icon: "🚑", path: "/Ambulance", nav: "navAmbulanceLabel", title: "ambulancePageTitle", copy: "ambulancePageCopy" },
+  { key: "hospital", label: "Hospital", icon: "🏥", path: "/Hospital", nav: "navHospitalLabel", title: "hospitalPageTitle", copy: "hospitalPageCopy" },
+  { key: "blood", label: "Blood", icon: "🩸", path: "/Blood", nav: "navBloodLabel", title: "bloodPageTitle", copy: "bloodPageCopy" },
+  { key: "contact", label: "Contact", icon: "☎️", path: "/Contact", nav: "navContactLabel", title: "contactPageTitle", copy: "contactPageCopy" },
+  { key: "about", label: "About", icon: "★", path: "/About", nav: "navHowItWorksLabel", title: "howPageTitle", copy: "howPageCopy" }
+];
+
+const editableContentPageMap = Object.fromEntries(editableContentPages.map((page) => [page.key, page]));
 
 const doctorDesignations = ["Professor", "Associate Professor", "Assistant Professor", "Consultant"];
 const chamberWeekdayOptions = [
@@ -1785,19 +1799,148 @@ function fillMainPageForm() {
   qs("#statsSetting").value = formatStats(settings.stats || []);
 }
 
-function fillContentPageForm() {
-  const settings = { ...contentPageDefaults, ...(state.settings || {}) };
-  contentPageFields.forEach(([key]) => {
-    const input = qs(`#${key}`);
-    if (input) input.value = settings[key] || "";
+function normalizeAdminPageContentEntry(page, settings = state.settings) {
+  const stored = settings?.pageContent && typeof settings.pageContent === "object" ? settings.pageContent[page.key] || {} : {};
+  return {
+    label: stored.label || settings?.[page.nav] || page.label,
+    badge: stored.badge || page.label,
+    title: stored.title || settings?.[page.title] || page.label,
+    copy: stored.copy || settings?.[page.copy] || "",
+    body: stored.body || "",
+    primaryLabel: stored.primaryLabel || "",
+    primaryUrl: stored.primaryUrl || "",
+    secondaryLabel: stored.secondaryLabel || "",
+    secondaryUrl: stored.secondaryUrl || "",
+    layout: stored.layout || "standard",
+    hidden: stored.hidden === true
+  };
+}
+
+function getAdminPageContent(settings = state.settings) {
+  const result = {};
+  editableContentPages.forEach((page) => {
+    result[page.key] = normalizeAdminPageContentEntry(page, settings);
   });
+  return result;
+}
+
+function currentContentEditorEntry() {
+  return {
+    label: qs("#contentPageLabel")?.value.trim() || "",
+    badge: qs("#contentPageBadge")?.value.trim() || "",
+    title: qs("#contentPageTitleField")?.value.trim() || "",
+    copy: qs("#contentPageCopyField")?.value.trim() || "",
+    body: qs("#contentPageBodyField")?.value.trim() || "",
+    primaryLabel: qs("#contentPrimaryLabel")?.value.trim() || "",
+    primaryUrl: qs("#contentPrimaryUrl")?.value.trim() || "",
+    secondaryLabel: qs("#contentSecondaryLabel")?.value.trim() || "",
+    secondaryUrl: qs("#contentSecondaryUrl")?.value.trim() || "",
+    layout: qs("#contentPageLayout")?.value || "standard",
+    hidden: qs("#contentPageHidden")?.checked === true
+  };
+}
+
+function renderContentPageCards() {
+  const grid = qs("#contentPagesOverview");
+  if (!grid) return;
+  const settings = state.settings || {};
+  const pageContent = getAdminPageContent(settings);
+  grid.hidden = false;
+  grid.innerHTML = editableContentPages.map((page) => {
+    const entry = pageContent[page.key];
+    return `
+      <button class="content-page-card" type="button" data-content-page-card="${escapeHtml(page.key)}">
+        <span class="content-page-card-icon">${escapeHtml(page.icon)}</span>
+        <span class="content-page-card-title">${escapeHtml(entry.label || page.label)}</span>
+        <span class="content-page-card-copy">${escapeHtml(entry.title || page.label)}</span>
+        <span class="content-page-card-status ${entry.hidden ? "is-hidden" : ""}">${entry.hidden ? "Hidden from menu" : "Visible"}</span>
+      </button>
+    `;
+  }).join("");
+}
+
+function showContentPageOverview() {
+  const grid = qs("#contentPagesOverview");
+  const form = qs("#contentPageForm");
+  if (grid) grid.hidden = false;
+  if (form) form.hidden = true;
+}
+
+function fillContentEditor(pageKey) {
+  const page = editableContentPageMap[pageKey] || editableContentPages[0];
+  state.activeContentPage = page.key;
+  const entry = normalizeAdminPageContentEntry(page, state.settings || {});
+  if (qs("#contentEditorPageKey")) qs("#contentEditorPageKey").value = page.key;
+  if (qs("#contentEditorKicker")) qs("#contentEditorKicker").textContent = `${page.label} page`;
+  if (qs("#contentEditorTitle")) qs("#contentEditorTitle").textContent = `Edit ${page.label}`;
+  if (qs("#contentPageLabel")) qs("#contentPageLabel").value = entry.label || "";
+  if (qs("#contentPageBadge")) qs("#contentPageBadge").value = entry.badge || "";
+  if (qs("#contentPageTitleField")) qs("#contentPageTitleField").value = entry.title || "";
+  if (qs("#contentPageCopyField")) qs("#contentPageCopyField").value = entry.copy || "";
+  if (qs("#contentPageBodyField")) qs("#contentPageBodyField").value = entry.body || "";
+  if (qs("#contentPrimaryLabel")) qs("#contentPrimaryLabel").value = entry.primaryLabel || "";
+  if (qs("#contentPrimaryUrl")) qs("#contentPrimaryUrl").value = entry.primaryUrl || "";
+  if (qs("#contentSecondaryLabel")) qs("#contentSecondaryLabel").value = entry.secondaryLabel || "";
+  if (qs("#contentSecondaryUrl")) qs("#contentSecondaryUrl").value = entry.secondaryUrl || "";
+  if (qs("#contentPageLayout")) qs("#contentPageLayout").value = entry.layout || "standard";
+  if (qs("#contentPageHidden")) qs("#contentPageHidden").checked = entry.hidden === true;
+  renderContentPreview();
+}
+
+function openContentPageEditor(pageKey) {
+  const grid = qs("#contentPagesOverview");
+  const form = qs("#contentPageForm");
+  fillContentEditor(pageKey);
+  if (grid) grid.hidden = true;
+  if (form) form.hidden = false;
+  form?.scrollIntoView({ behavior: "smooth", block: "start" });
+}
+
+function renderContentPreview() {
+  const entry = currentContentEditorEntry();
+  if (qs("#contentPreviewBadge")) qs("#contentPreviewBadge").textContent = entry.badge || "Preview";
+  if (qs("#contentPreviewTitle")) qs("#contentPreviewTitle").textContent = entry.title || "Page title";
+  if (qs("#contentPreviewCopy")) qs("#contentPreviewCopy").textContent = entry.copy || "Page description preview.";
+  const body = qs("#contentPreviewBody");
+  if (body) {
+    body.innerHTML = entry.body ? escapeHtml(entry.body).replaceAll("\n", "<br />") : "";
+    body.hidden = !entry.body;
+  }
+  const actions = qs("#contentPreviewActions");
+  if (actions) {
+    const buttons = [];
+    if (entry.primaryLabel) buttons.push(`<span class="btn btn-primary">${escapeHtml(entry.primaryLabel)}</span>`);
+    if (entry.secondaryLabel) buttons.push(`<span class="btn btn-ghost">${escapeHtml(entry.secondaryLabel)}</span>`);
+    actions.innerHTML = buttons.join("");
+    actions.hidden = buttons.length === 0;
+  }
+}
+
+function fillContentPageForm() {
+  renderContentPageCards();
+  showContentPageOverview();
 }
 
 function contentPagesPayload() {
+  const settings = state.settings || {};
   const payload = {};
   contentPageFields.forEach(([key]) => {
-    payload[key] = qs(`#${key}`)?.value.trim() || state.settings?.[key] || "";
+    payload[key] = settings[key] || "";
   });
+
+  const pageContent = getAdminPageContent(settings);
+  const editorKey = qs("#contentEditorPageKey")?.value || state.activeContentPage || "services";
+  if (editableContentPageMap[editorKey]) {
+    pageContent[editorKey] = currentContentEditorEntry();
+  }
+
+  editableContentPages.forEach((page) => {
+    const entry = pageContent[page.key] || {};
+    payload[page.nav] = entry.label || settings[page.nav] || page.label;
+    payload[page.title] = entry.title || settings[page.title] || page.label;
+    payload[page.copy] = entry.copy || settings[page.copy] || "";
+  });
+  payload.pageContent = pageContent;
   return payload;
 }
 
@@ -2967,6 +3110,19 @@ function bindEvents() {
     } catch (error) {
       toast(error.message || "Could not save page content.");
     }
+  });
+
+  qs("#contentPagesOverview")?.addEventListener("click", (event) => {
+    const card = event.target.closest("[data-content-page-card]");
+    if (!card) return;
+    openContentPageEditor(card.dataset.contentPageCard || "services");
+  });
+
+  qs("#contentEditorBack")?.addEventListener("click", showContentPageOverview);
+
+  qsa("#contentPageForm input, #contentPageForm textarea, #contentPageForm select").forEach((input) => {
+    input.addEventListener("input", renderContentPreview);
+    input.addEventListener("change", renderContentPreview);
   });
 
   qs("#serviceForm")?.addEventListener("submit", async (event) => {

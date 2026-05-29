@@ -6,7 +6,7 @@ import { createSettings, getSettings, updateSettings } from "../../_lib/turso.js
 
 const permissionFields = {
   main: ["siteName", "tagline", "description", "heroHighlight", "heroTitleLine", "primaryButtonText", "secondaryButtonText", "servicesButtonText", "contactButtonText", "stats"],
-  content: ["navServicesLabel", "navStoreLabel", "navDoctorsLabel", "navAmbulanceLabel", "navBloodLabel", "navHowItWorksLabel", "navContactLabel", "servicesPageTitle", "servicesPageCopy", "storePageTitle", "storePageCopy", "doctorsPageTitle", "doctorsPageCopy", "ambulancePageTitle", "ambulancePageCopy", "bloodPageTitle", "bloodPageCopy", "howPageTitle", "howPageCopy", "contactPageTitle", "contactPageCopy", "loginPageTitle", "loginPageCopy", "signupPageTitle", "signupPageCopy", "profilePageTitle", "profilePageCopy"],
+  content: ["navServicesLabel", "navStoreLabel", "navDoctorsLabel", "navAmbulanceLabel", "navHospitalLabel", "navBloodLabel", "navHowItWorksLabel", "navContactLabel", "servicesPageTitle", "servicesPageCopy", "storePageTitle", "storePageCopy", "doctorsPageTitle", "doctorsPageCopy", "ambulancePageTitle", "ambulancePageCopy", "hospitalPageTitle", "hospitalPageCopy", "bloodPageTitle", "bloodPageCopy", "howPageTitle", "howPageCopy", "contactPageTitle", "contactPageCopy", "loginPageTitle", "loginPageCopy", "signupPageTitle", "signupPageCopy", "profilePageTitle", "profilePageCopy", "pageContent"],
   services: ["serviceTags", "serviceIcons", "serviceDescriptions"],
   ambulance: ["ambulanceDescription", "ambulanceButtonText", "ambulancePhone", "ambulanceWhatsapp"],
   contact: ["location", "email", "instagramHandle", "facebookUrl", "socialLinks", "phones", "whatsapp", "emergencyNote"]

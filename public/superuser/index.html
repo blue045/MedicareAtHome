@@ -16,7 +16,7 @@
         }
       })();
     </script>
-    <link rel="stylesheet" href="/assets/css/styles.css?v=ambulance-photo-fix-v1" />
+    <link rel="stylesheet" href="/assets/css/styles.css?v=content-pages-v1" />
     <link rel="icon" href="/assets/img/logo.png" type="image/png" />
   </head>
   <body class="superuser-body">
@@ -194,43 +194,98 @@
           </section>
 
           <section class="admin-page" data-admin-page="content">
-            <section class="admin-card main-page-card">
+            <section class="admin-card main-page-card content-management-card">
               <p class="section-kicker">Content Pages</p>
-              <h2>Edit website page titles and navigation</h2>
-              <p class="section-copy">Use this section to edit the text shown on public pages without touching code.</p>
-              <form id="contentPageForm" class="form-grid">
-                <div class="form-group"><label for="navServicesLabel">Services Nav Label</label><input class="form-input" id="navServicesLabel" placeholder="Services" /></div>
-                <div class="form-group"><label for="navStoreLabel">Store Nav Label</label><input class="form-input" id="navStoreLabel" placeholder="Store" /></div>
-                <div class="form-group"><label for="navDoctorsLabel">Doctors Nav Label</label><input class="form-input" id="navDoctorsLabel" placeholder="Doctors" /></div>
-                <div class="form-group"><label for="navAmbulanceLabel">Ambulance Nav Label</label><input class="form-input" id="navAmbulanceLabel" placeholder="Ambulance" /></div>
-                <div class="form-group"><label for="navHospitalLabel">Hospital Nav Label</label><input class="form-input" id="navHospitalLabel" placeholder="Hospital" /></div>
-                <div class="form-group"><label for="navBloodLabel">Blood Nav Label</label><input class="form-input" id="navBloodLabel" placeholder="Blood" /></div>
-                <div class="form-group"><label for="navHowItWorksLabel">About Nav Label</label><input class="form-input" id="navHowItWorksLabel" placeholder="About" /></div>
-                <div class="form-group"><label for="navContactLabel">Contact Nav Label</label><input class="form-input" id="navContactLabel" placeholder="Contact" /></div>
+              <h2>Manage public page content</h2>
+              <p class="section-copy">Choose a page card, then edit the public title, short text, body text, action buttons and layout from one place.</p>
 
-                <div class="form-group"><label for="servicesPageTitle">Services Page Title</label><input class="form-input" id="servicesPageTitle" /></div>
-                <div class="form-group"><label for="servicesPageCopy">Services Page Description</label><textarea class="form-textarea" id="servicesPageCopy"></textarea></div>
-                <div class="form-group"><label for="storePageTitle">Store Page Title</label><input class="form-input" id="storePageTitle" /></div>
-                <div class="form-group"><label for="storePageCopy">Store Page Description</label><textarea class="form-textarea" id="storePageCopy"></textarea></div>
-                <div class="form-group"><label for="doctorsPageTitle">Doctors Page Title</label><input class="form-input" id="doctorsPageTitle" /></div>
-                <div class="form-group"><label for="doctorsPageCopy">Doctors Page Description</label><textarea class="form-textarea" id="doctorsPageCopy"></textarea></div>
-                <div class="form-group"><label for="ambulancePageTitle">Ambulance Page Title</label><input class="form-input" id="ambulancePageTitle" /></div>
-                <div class="form-group"><label for="ambulancePageCopy">Ambulance Page Description</label><textarea class="form-textarea" id="ambulancePageCopy"></textarea></div>
-                <div class="form-group"><label for="hospitalPageTitle">Hospital Page Title</label><input class="form-input" id="hospitalPageTitle" /></div>
-                <div class="form-group"><label for="hospitalPageCopy">Hospital Page Description</label><textarea class="form-textarea" id="hospitalPageCopy"></textarea></div>
-                <div class="form-group"><label for="bloodPageTitle">Blood Page Title</label><input class="form-input" id="bloodPageTitle" /></div>
-                <div class="form-group"><label for="bloodPageCopy">Blood Page Description</label><textarea class="form-textarea" id="bloodPageCopy"></textarea></div>
-                <div class="form-group"><label for="howPageTitle">About Page Title</label><input class="form-input" id="howPageTitle" /></div>
-                <div class="form-group"><label for="howPageCopy">About Page Description</label><textarea class="form-textarea" id="howPageCopy"></textarea></div>
-                <div class="form-group"><label for="contactPageTitle">Contact Page Title</label><input class="form-input" id="contactPageTitle" /></div>
-                <div class="form-group"><label for="contactPageCopy">Contact Page Description</label><textarea class="form-textarea" id="contactPageCopy"></textarea></div>
-                <div class="form-group"><label for="loginPageTitle">Login Page Title</label><input class="form-input" id="loginPageTitle" /></div>
-                <div class="form-group"><label for="loginPageCopy">Login Page Description</label><textarea class="form-textarea" id="loginPageCopy"></textarea></div>
-                <div class="form-group"><label for="signupPageTitle">Signup Page Title</label><input class="form-input" id="signupPageTitle" /></div>
-                <div class="form-group"><label for="signupPageCopy">Signup Page Description</label><textarea class="form-textarea" id="signupPageCopy"></textarea></div>
-                <div class="form-group"><label for="profilePageTitle">Profile Page Title</label><input class="form-input" id="profilePageTitle" /></div>
-                <div class="form-group"><label for="profilePageCopy">Profile Page Description</label><textarea class="form-textarea" id="profilePageCopy"></textarea></div>
-                <div class="form-actions full"><button class="btn btn-primary" type="submit">Save Page Content</button></div>
+              <div id="contentPagesOverview" class="content-page-card-grid" aria-label="Editable website pages"></div>
+
+              <form id="contentPageForm" class="content-page-editor" hidden>
+                <input type="hidden" id="contentEditorPageKey" />
+                <div class="content-editor-top">
+                  <button class="btn btn-ghost" type="button" id="contentEditorBack">← Page cards</button>
+                  <div>
+                    <p class="section-kicker" id="contentEditorKicker">Page editor</p>
+                    <h3 id="contentEditorTitle">Edit page</h3>
+                  </div>
+                </div>
+
+                <div class="form-grid">
+                  <div class="form-group">
+                    <label for="contentPageLabel">Menu / card label</label>
+                    <input class="form-input" id="contentPageLabel" placeholder="Example: Services" />
+                    <small class="form-help">This updates the hamburger/navigation label for this page.</small>
+                  </div>
+
+                  <div class="form-group">
+                    <label for="contentPageBadge">Small badge / section kicker</label>
+                    <input class="form-input" id="contentPageBadge" placeholder="Example: Ambulance options" />
+                  </div>
+
+                  <div class="form-group full">
+                    <label for="contentPageTitleField">Page title</label>
+                    <input class="form-input" id="contentPageTitleField" placeholder="Main headline shown on the public page" />
+                  </div>
+
+                  <div class="form-group full">
+                    <label for="contentPageCopyField">Short description</label>
+                    <textarea class="form-textarea" id="contentPageCopyField" placeholder="Short text below the page title"></textarea>
+                  </div>
+
+                  <div class="form-group full">
+                    <label for="contentPageBodyField">Extra body text</label>
+                    <textarea class="form-textarea tall-textarea" id="contentPageBodyField" placeholder="Optional extra content. Line breaks are kept on the public page."></textarea>
+                  </div>
+
+                  <div class="form-group">
+                    <label for="contentPrimaryLabel">Primary button label</label>
+                    <input class="form-input" id="contentPrimaryLabel" placeholder="Example: WhatsApp" />
+                  </div>
+
+                  <div class="form-group">
+                    <label for="contentPrimaryUrl">Primary button URL</label>
+                    <input class="form-input" id="contentPrimaryUrl" placeholder="/Contact or https://wa.me/..." />
+                  </div>
+
+                  <div class="form-group">
+                    <label for="contentSecondaryLabel">Secondary button label</label>
+                    <input class="form-input" id="contentSecondaryLabel" placeholder="Example: Call now" />
+                  </div>
+
+                  <div class="form-group">
+                    <label for="contentSecondaryUrl">Secondary button URL</label>
+                    <input class="form-input" id="contentSecondaryUrl" placeholder="tel:+880... or /Doctors" />
+                  </div>
+
+                  <div class="form-group">
+                    <label for="contentPageLayout">Layout style</label>
+                    <select class="form-input" id="contentPageLayout">
+                      <option value="standard">Standard</option>
+                      <option value="compact">Compact</option>
+                      <option value="wide">Wide</option>
+                      <option value="split">Split / two column</option>
+                      <option value="cards-first">Cards first</option>
+                    </select>
+                  </div>
+
+                  <label class="check-row content-visibility-row">
+                    <input type="checkbox" id="contentPageHidden" />
+                    <span>Hide this page from the hamburger/navigation menu</span>
+                  </label>
+
+                  <section class="content-preview-card full" aria-label="Live content preview">
+                    <p class="section-kicker" id="contentPreviewBadge">Preview</p>
+                    <h3 id="contentPreviewTitle">Page title</h3>
+                    <p id="contentPreviewCopy">Page description preview.</p>
+                    <div id="contentPreviewBody" class="content-preview-body"></div>
+                    <div id="contentPreviewActions" class="hero-actions"></div>
+                  </section>
+
+                  <div class="form-actions full">
+                    <button class="btn btn-primary" type="submit">Save This Page</button>
+                  </div>
+                </div>
               </form>
             </section>
           </section>
@@ -706,6 +761,6 @@
     </main>
 
     <div class="toast" id="toast" aria-live="polite" aria-atomic="true"></div>
-    <script type="module" src="/assets/js/admin.js?v=ambulance-photo-fix-v1"></script>
+    <script type="module" src="/assets/js/admin.js?v=content-pages-v1"></script>
   </body>
 </html>

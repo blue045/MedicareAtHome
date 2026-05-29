@@ -167,3 +167,7 @@
 /About/ /About/index.html 200
 /How-it-works /About 301
 /How-it-works/ /About 301
+/Ambulance/:slug /Ambulance/index.html 200
+/Ambulance/:slug/ /Ambulance/index.html 200
+/ambulance/:slug /Ambulance/index.html 200
+/ambulance/:slug/ /Ambulance/index.html 200

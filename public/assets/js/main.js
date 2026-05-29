@@ -66,6 +66,7 @@ const fallbackSettings = {
     Plaster: "Basic plaster care support with direct contact before appointment.",
     "Home Medical Care": "General home medical support for common care needs."
   },
+  pageContent: {},
   emergencyNote:
     "This website is for home visit medical service contact. For life-threatening emergencies, contact your nearest hospital or emergency hotline immediately.",
   stats: [
@@ -103,7 +104,9 @@ const state = {
   aboutProfiles: [],
   aboutPosts: [],
   hospitalLoadError: false,
-  hospitalsLoaded: false
+  hospitalsLoaded: false,
+  ambulanceLoadError: false,
+  ambulancesLoaded: false
 };
 
 const qs = (selector, root = document) => root.querySelector(selector);
@@ -461,6 +464,34 @@ function isHospitalDetailPath() {
   return Boolean(getHospitalDetailSlug());
 }
 
+function ambulanceUrl(ambulance = {}) {
+  const id = String(ambulance.id || "").trim();
+  const nameSlug = slugify(ambulance.title || "ambulance");
+  if (id) return `/Ambulance?ambulance=${encodeURIComponent(id)}&name=${encodeURIComponent(nameSlug)}`;
+  return `/Ambulance/${encodeURIComponent(nameSlug)}`;
+}
+
+function ambulanceMatchesSlug(ambulance = {}, slug = "") {
+  const cleanSlug = decodeURIComponent(String(slug || "")).replace(/^\/+|\/+$/g, "");
+  if (!cleanSlug) return false;
+  const id = String(ambulance.id || "");
+  if (id && (cleanSlug === id || cleanSlug.startsWith(`${id}-`))) return true;
+  return cleanSlug === slugify(ambulance.title || "ambulance");
+}
+
+function getAmbulanceDetailSlug() {
+  const params = new URLSearchParams(window.location.search || "");
+  const queryId = params.get("ambulance") || params.get("id");
+  if (queryId) return decodeURIComponent(String(queryId));
+  const parts = window.location.pathname.split("/").filter(Boolean);
+  if (parts[0]?.toLowerCase() !== "ambulance" || !parts[1]) return "";
+  return decodeURIComponent(parts.slice(1).join("/"));
+}
+
+function isAmbulanceDetailPath() {
+  return Boolean(getAmbulanceDetailSlug());
+}
+
 function getServiceDefinitions() {
   const services = state.settings.serviceTags?.length
     ? state.settings.serviceTags
@@ -665,7 +696,7 @@ async function loadData() {
   const needsBlood = Boolean(qs("#bloodGrid") || qs("#bloodDetailPage"));
   const needsAbout = Boolean(qs("#aboutProfilesGrid") || qs("#aboutPostsGrid"));
   const needsHospitals = Boolean(qs("#hospitalGrid") || qs("#hospitalDetailPage"));
-  const needsAmbulances = Boolean(qs("#customAmbulanceGrid") || qs("#ambulancePage"));
+  const needsAmbulances = Boolean(qs("#customAmbulanceGrid") || qs("#ambulancePage") || qs("#ambulanceDetailPage"));
 
   // Render immediately with fallback or cached content so users do not stare at blank sections.
   applyCachedPublicData(needsDoctors, needsBlood, needsHospitals, needsAmbulances);
@@ -729,11 +760,15 @@ async function loadData() {
   if (needsAmbulances) {
     tasks.push((async () => {
       try {
+        state.ambulanceLoadError = false;
         const ambulancesResponse = await fetchJson(`/api/ambulances?fresh=${Date.now()}`, { cache: "no-store" });
         state.ambulances = Array.isArray(ambulancesResponse?.ambulances) ? ambulancesResponse.ambulances : [];
+        state.ambulancesLoaded = true;
         writePublicCache("ambulances", ambulancesResponse);
       } catch (error) {
         console.warn("Could not load ambulances", error);
+        state.ambulanceLoadError = true;
+        state.ambulancesLoaded = true;
         state.ambulances = Array.isArray(state.ambulances) ? state.ambulances : [];
       }
     })());
@@ -852,18 +887,22 @@ function renderBranding() {
   qsa("[data-contact-action-label]").forEach((node) => (node.textContent = settings.contactButtonText || fallbackSettings.contactButtonText));
   const aboutNavLabel = normalizeAboutNavLabel(settings.navHowItWorksLabel || fallbackSettings.navHowItWorksLabel);
   qsa("[data-about-action-label]").forEach((node) => (node.textContent = aboutNavLabel));
+  const pageContent = settings.pageContent && typeof settings.pageContent === "object" ? settings.pageContent : {};
   const navLabels = [
-    ["/Services", settings.navServicesLabel || fallbackSettings.navServicesLabel],
-    ["/Store", settings.navStoreLabel || fallbackSettings.navStoreLabel],
-    ["/Doctors", settings.navDoctorsLabel || fallbackSettings.navDoctorsLabel],
-    ["/Ambulance", settings.navAmbulanceLabel || fallbackSettings.navAmbulanceLabel],
-    ["/Hospital", settings.navHospitalLabel || fallbackSettings.navHospitalLabel],
-    ["/Blood", settings.navBloodLabel || fallbackSettings.navBloodLabel],
-    ["/Contact", settings.navContactLabel || fallbackSettings.navContactLabel],
-    ["/About", aboutNavLabel]
+    ["/Services", pageContent.services?.label || settings.navServicesLabel || fallbackSettings.navServicesLabel, pageContent.services?.hidden],
+    ["/Store", pageContent.store?.label || settings.navStoreLabel || fallbackSettings.navStoreLabel, pageContent.store?.hidden],
+    ["/Doctors", pageContent.doctors?.label || settings.navDoctorsLabel || fallbackSettings.navDoctorsLabel, pageContent.doctors?.hidden],
+    ["/Ambulance", pageContent.ambulance?.label || settings.navAmbulanceLabel || fallbackSettings.navAmbulanceLabel, pageContent.ambulance?.hidden],
+    ["/Hospital", pageContent.hospital?.label || settings.navHospitalLabel || fallbackSettings.navHospitalLabel, pageContent.hospital?.hidden],
+    ["/Blood", pageContent.blood?.label || settings.navBloodLabel || fallbackSettings.navBloodLabel, pageContent.blood?.hidden],
+    ["/Contact", pageContent.contact?.label || settings.navContactLabel || fallbackSettings.navContactLabel, pageContent.contact?.hidden],
+    ["/About", pageContent.about?.label || aboutNavLabel, pageContent.about?.hidden]
   ];
-  navLabels.forEach(([href, label]) => {
-    qsa(`.nav-links a[href="${href}"]`).forEach((node) => (node.textContent = label));
+  navLabels.forEach(([href, label, hidden]) => {
+    qsa(`.nav-links a[href="${href}"]`).forEach((node) => {
+      node.textContent = label;
+      node.hidden = hidden === true;
+    });
   });
   renderEditablePageText(settings);
   qsa("[data-footer-location]").forEach((node) => (node.textContent = normalizeDisplayLocation(settings.location || fallbackSettings.location)));
@@ -893,36 +932,92 @@ function renderBranding() {
   }
 }
 
-function renderEditablePageText(settings = state.settings) {
-  const pageKey = document.body?.dataset?.pageTitle || "";
+function editablePageContentFor(pageKey, settings = state.settings) {
   const map = {
-    Services: ["servicesPageTitle", "servicesPageCopy"],
-    Store: ["storePageTitle", "storePageCopy"],
-    Doctors: ["doctorsPageTitle", "doctorsPageCopy"],
-    Ambulance: ["ambulancePageTitle", "ambulancePageCopy"],
-    Hospital: ["hospitalPageTitle", "hospitalPageCopy"],
-    Blood: ["bloodPageTitle", "bloodPageCopy"],
-    About: ["howPageTitle", "howPageCopy"],
-    Contact: ["contactPageTitle", "contactPageCopy"],
-    "Log in": ["loginPageTitle", "loginPageCopy"],
-    "Sign up": ["signupPageTitle", "signupPageCopy"],
-    "Product Dashboard": ["profilePageTitle", "profilePageCopy"]
+    Services: ["services", "servicesPageTitle", "servicesPageCopy"],
+    Store: ["store", "storePageTitle", "storePageCopy"],
+    Doctors: ["doctors", "doctorsPageTitle", "doctorsPageCopy"],
+    Ambulance: ["ambulance", "ambulancePageTitle", "ambulancePageCopy"],
+    Hospital: ["hospital", "hospitalPageTitle", "hospitalPageCopy"],
+    Blood: ["blood", "bloodPageTitle", "bloodPageCopy"],
+    About: ["about", "howPageTitle", "howPageCopy"],
+    Contact: ["contact", "contactPageTitle", "contactPageCopy"],
+    "Log in": ["login", "loginPageTitle", "loginPageCopy"],
+    "Sign up": ["signup", "signupPageTitle", "signupPageCopy"],
+    "Product Dashboard": ["profile", "profilePageTitle", "profilePageCopy"]
   };
   const fields = map[pageKey];
-  if (!fields) return;
-  const [titleKey, copyKey] = fields;
-  const title = qs("[data-editable-page-title]") || qs("main .section-title");
-  const copy = qs("[data-editable-page-copy]") || qs("main .section-copy");
-  let titleText = settings[titleKey];
-  let copyText = settings[copyKey];
-
+  if (!fields) return null;
+  const [contentKey, titleKey, copyKey] = fields;
+  const custom = settings.pageContent && typeof settings.pageContent === "object" ? settings.pageContent[contentKey] || {} : {};
+  let titleText = custom.title || settings[titleKey];
+  let copyText = custom.copy || settings[copyKey];
   if (pageKey === "About") {
     titleText = cleanRemovedAppointmentFlowText(titleText, fallbackSettings.howPageTitle);
     copyText = cleanRemovedAppointmentFlowText(copyText, fallbackSettings.howPageCopy);
   }
+  return {
+    key: contentKey,
+    title: titleText,
+    copy: copyText,
+    badge: custom.badge || "",
+    body: custom.body || "",
+    primaryLabel: custom.primaryLabel || "",
+    primaryUrl: custom.primaryUrl || "",
+    secondaryLabel: custom.secondaryLabel || "",
+    secondaryUrl: custom.secondaryUrl || "",
+    layout: custom.layout || "standard",
+    hidden: custom.hidden === true
+  };
+}
 
-  if (title && titleText) title.textContent = titleText;
-  if (copy && copyText) copy.textContent = copyText;
+function renderEditablePageText(settings = state.settings) {
+  const pageKey = document.body?.dataset?.pageTitle || "";
+  const content = editablePageContentFor(pageKey, settings);
+  if (!content) return;
+
+  const title = qs("[data-editable-page-title]") || qs("main .section-title");
+  const copy = qs("[data-editable-page-copy]") || qs("main .section-copy");
+  if (title && content.title) title.textContent = content.title;
+  if (copy && content.copy) copy.textContent = content.copy;
+
+  const firstKicker = qs("main .section-kicker");
+  if (firstKicker && content.badge) firstKicker.textContent = content.badge;
+
+  document.body.classList.remove("page-layout-standard", "page-layout-compact", "page-layout-wide", "page-layout-split", "page-layout-cards-first");
+  document.body.classList.add(`page-layout-${content.layout || "standard"}`);
+
+  const host = copy?.parentElement || title?.parentElement || qs("main");
+  if (!host) return;
+
+  let bodyBlock = qs("[data-admin-page-body]");
+  if (!bodyBlock) {
+    bodyBlock = document.createElement("div");
+    bodyBlock.dataset.adminPageBody = "true";
+    bodyBlock.className = "admin-page-body-text";
+    copy?.insertAdjacentElement("afterend", bodyBlock);
+  }
+  bodyBlock.innerHTML = content.body ? escapeHtml(content.body).replaceAll("\n", "<br />") : "";
+  bodyBlock.hidden = !content.body;
+
+  let actions = qs("[data-admin-page-actions]");
+  if (!actions) {
+    actions = document.createElement("div");
+    actions.dataset.adminPageActions = "true";
+    actions.className = "hero-actions page-admin-actions";
+    bodyBlock.insertAdjacentElement("afterend", actions);
+  }
+  const buttons = [];
+  if (content.primaryLabel) {
+    const href = content.primaryUrl || "/Contact";
+    buttons.push(`<a class="btn btn-primary" href="${escapeHtml(href)}">${escapeHtml(content.primaryLabel)}</a>`);
+  }
+  if (content.secondaryLabel) {
+    const href = content.secondaryUrl || "/Contact";
+    buttons.push(`<a class="btn btn-ghost" href="${escapeHtml(href)}">${escapeHtml(content.secondaryLabel)}</a>`);
+  }
+  actions.innerHTML = buttons.join("");
+  actions.hidden = buttons.length === 0;
 }
 
 function renderStats() {
@@ -1460,10 +1555,69 @@ function ambulanceNumber(value = "") {
   return normalizePhone(value || fallbackSettings.ambulancePhone);
 }
 
+function renderAmbulanceDetailPhoto(ambulance = {}) {
+  const photo = String(ambulance.photoUrl || "").trim();
+  if (!photo) {
+    return `
+      <div class="product-gallery ambulance-product-gallery">
+        <div class="product-detail-photo ambulance-detail-photo ambulance-detail-photo-empty"><span>🚑</span></div>
+      </div>
+    `;
+  }
+  return `
+    <div class="product-gallery ambulance-product-gallery">
+      <button class="product-detail-photo product-gallery-button ambulance-detail-photo" type="button" data-gallery-image="${escapeHtml(photo)}" aria-label="Open ${escapeHtml(ambulance.title || "Ambulance")} photo">
+        <img src="${escapeHtml(photo)}" alt="${escapeHtml(ambulance.title || "Ambulance")}" loading="eager" decoding="async" />
+      </button>
+    </div>
+  `;
+}
+
+function renderAmbulanceDetail(ambulance = {}) {
+  const settings = state.settings || fallbackSettings;
+  const phone = normalizePhone(ambulance.phone || settings.ambulancePhone || fallbackSettings.ambulancePhone);
+  const whatsapp = normalizeWhatsApp(ambulance.whatsapp || ambulance.phone || settings.ambulanceWhatsapp || settings.ambulancePhone || fallbackSettings.ambulanceWhatsapp);
+  const message = encodeURIComponent(`Hello ${settings.siteName || "Medicare At Home"}, I need ${ambulance.title || "ambulance"} support. Pickup: `);
+  return `
+    <article class="product-detail-card ambulance-detail-card">
+      <div class="product-detail-layout ambulance-detail-layout">
+        <div>
+          ${renderAmbulanceDetailPhoto(ambulance)}
+        </div>
+        <div class="product-detail-content ambulance-detail-content">
+          <p class="section-kicker">Ambulance</p>
+          <h2>${escapeHtml(ambulance.title || "Ambulance")}</h2>
+          ${ambulance.info ? `<p class="doctor-detail-bio ambulance-detail-info">${escapeHtml(ambulance.info)}</p>` : `<p class="doctor-detail-bio ambulance-detail-info">Contact us for this ambulance option.</p>`}
+          <div class="doctor-detail-grid product-info-grid ambulance-info-grid">
+            <div class="detail-row"><small>Type</small><strong>${escapeHtml(ambulance.title || "Ambulance")}</strong></div>
+            ${ambulance.info ? `<div class="detail-row full"><small>Information</small><strong>${escapeHtml(ambulance.info)}</strong></div>` : ""}
+            ${phone ? `<div class="detail-row"><small>Phone</small><strong>${escapeHtml(ambulance.phone || phone)}</strong></div>` : ""}
+            ${whatsapp ? `<div class="detail-row"><small>WhatsApp</small><strong>${escapeHtml(ambulance.whatsapp || ambulance.phone || whatsapp)}</strong></div>` : ""}
+          </div>
+          <div class="card-actions detail-actions ambulance-detail-actions">
+            <a class="btn btn-secondary" href="/Ambulance">← Back to ambulances</a>
+            ${phone ? `<a class="btn btn-ghost" href="tel:${phone}">Call</a>` : ""}
+            ${whatsapp ? `<a class="btn btn-primary" href="https://wa.me/${whatsapp}?text=${message}" target="_blank" rel="noopener noreferrer">WhatsApp</a>` : ""}
+          </div>
+        </div>
+      </div>
+    </article>
+  `;
+}
+
 function renderAmbulancePage() {
   const container = qs("#ambulancePage");
   if (!container) return;
   const settings = state.settings || fallbackSettings;
+  const isDetail = isAmbulanceDetailPath();
+  const listSection = qs("#ambulanceListSection");
+  const supportSection = qs("#ambulanceSupportSection");
+  const detailSection = qs("#ambulanceDetailSection");
+  const detailContainer = qs("#ambulanceDetailPage");
+  if (listSection) listSection.hidden = isDetail;
+  if (supportSection) supportSection.hidden = isDetail;
+  if (detailSection) detailSection.hidden = !isDetail;
+
   const phone = ambulanceNumber(settings.ambulancePhone || fallbackSettings.ambulancePhone);
   const whatsapp = normalizeWhatsApp(settings.ambulanceWhatsapp || settings.ambulancePhone || fallbackSettings.ambulanceWhatsapp);
   const message = encodeURIComponent(`Hello ${settings.siteName || "Medicare At Home"}, I need an ambulance. Pickup: `);
@@ -1476,31 +1630,54 @@ function renderAmbulancePage() {
     link.rel = whatsapp ? "noopener noreferrer" : "";
   });
 
+  const ambulances = (Array.isArray(state.ambulances) ? state.ambulances : [])
+    .filter((item) => item.isActive !== false)
+    .sort((a, b) => (Number(a.sortOrder) || 99) - (Number(b.sortOrder) || 99));
+
+  if (isDetail && detailContainer) {
+    const slug = getAmbulanceDetailSlug();
+    const ambulance = ambulances.find((item) => ambulanceMatchesSlug(item, slug));
+    if (!ambulance) {
+      if (!state.ambulancesLoaded && !state.ambulanceLoadError) {
+        detailContainer.innerHTML = `<div class="loading-state">Loading ambulance details...</div>`;
+        return;
+      }
+      detailContainer.innerHTML = state.ambulanceLoadError
+        ? `<div class="empty-state"><h2>Could not load ambulance details</h2><p>Please refresh once after deploy. If this keeps happening, check Cloudflare Pages environment variables and the /api/ambulances route.</p></div>`
+        : `<div class="empty-state"><h2>Ambulance not found</h2><p>This ambulance option is not available right now.</p><a class="btn btn-primary" href="/Ambulance">Back to ambulances</a></div>`;
+      return;
+    }
+    document.title = `${ambulance.title || "Ambulance Details"} | ${settings.siteName || fallbackSettings.siteName}`;
+    detailContainer.innerHTML = renderAmbulanceDetail(ambulance);
+    return;
+  }
+
   const customGrid = qs("#customAmbulanceGrid");
   if (customGrid) {
-    const ambulances = (Array.isArray(state.ambulances) ? state.ambulances : [])
-      .filter((item) => item.isActive !== false)
-      .sort((a, b) => (Number(a.sortOrder) || 99) - (Number(b.sortOrder) || 99));
     customGrid.innerHTML = ambulances.length ? ambulances.map((item) => {
       const itemPhone = normalizePhone(item.phone || settings.ambulancePhone || fallbackSettings.ambulancePhone);
       const itemWhatsapp = normalizeWhatsApp(item.whatsapp || item.phone || settings.ambulanceWhatsapp || settings.ambulancePhone || fallbackSettings.ambulanceWhatsapp);
       const itemMessage = encodeURIComponent(`Hello ${settings.siteName || "Medicare At Home"}, I need ${item.title || "ambulance"} support. Pickup: `);
       const photo = String(item.photoUrl || "").trim();
+      const href = ambulanceUrl(item);
       return `
         <article class="store-card ambulance-option-card">
-          <div class="store-card-link ambulance-option-content">
+          <a class="store-card-link ambulance-option-content" href="${escapeHtml(href)}" data-ambulance-link="${escapeHtml(href)}" aria-label="View ${escapeHtml(item.title || "Ambulance")} details">
             ${photo ? `<div class="store-product-photo ambulance-option-photo has-photo"><img src="${escapeHtml(photo)}" alt="${escapeHtml(item.title || "Ambulance")}" loading="lazy" decoding="async" /></div>` : `<div class="store-product-photo ambulance-option-photo store-product-photo-empty" aria-hidden="true">🚑</div>`}
             <div class="store-card-body ambulance-option-body">
               <h3>${escapeHtml(item.title || "Ambulance")}</h3>
               ${item.info ? `<p class="store-stock ambulance-option-info">${escapeHtml(item.info)}</p>` : `<p class="store-stock ambulance-option-info">Contact us for this ambulance option.</p>`}
+              <span class="store-card-view">View details</span>
             </div>
-          </div>
+          </a>
           <div class="card-actions store-card-actions ambulance-option-actions">
             ${itemPhone ? `<a class="btn btn-ghost" href="tel:${itemPhone}">Call</a>` : ""}
             ${itemWhatsapp ? `<a class="btn btn-primary" href="https://wa.me/${itemWhatsapp}?text=${itemMessage}" target="_blank" rel="noopener noreferrer">WhatsApp</a>` : ""}
           </div>
         </article>`;
-    }).join("") : `<div class="empty-state">Custom ambulance cards will appear here after admin adds them.</div>`;
+    }).join("") : (state.ambulanceLoadError
+      ? `<div class="empty-state"><strong>Could not load ambulance options.</strong><p>Please refresh once after deploy. If this keeps happening, check your Turso environment variables.</p></div>`
+      : `<div class="empty-state">Custom ambulance cards will appear here after admin adds them.</div>`);
   }
 }
 
@@ -1537,6 +1714,20 @@ function initHospitalCardLinks() {
     const link = event.target.closest("a[data-hospital-link]");
     if (!link) return;
     const href = link.getAttribute("href") || link.dataset.hospitalLink || "";
+    if (!href) return;
+    event.preventDefault();
+    window.location.assign(href);
+  });
+}
+
+function initAmbulanceCardLinks() {
+  const grid = qs("#customAmbulanceGrid");
+  if (!grid || grid.dataset.ambulanceLinksReady === "true") return;
+  grid.dataset.ambulanceLinksReady = "true";
+  grid.addEventListener("click", (event) => {
+    const link = event.target.closest("a[data-ambulance-link]");
+    if (!link) return;
+    const href = link.getAttribute("href") || link.dataset.ambulanceLink || "";
     if (!href) return;
     event.preventDefault();
     window.location.assign(href);
@@ -1717,6 +1908,7 @@ initAppointmentFinder();
 initBloodForm();
 initAmbulanceForm();
 initHospitalCardLinks();
+initAmbulanceCardLinks();
 initLocationPermissionButtons();
 initPasswordVisibilityToggles();
 loadData();
