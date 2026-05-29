@@ -9199,3 +9199,12 @@ body:not(.superuser-body) :where(.section-kicker, .eyebrow, .badge, .status-pill
     font-size: .78rem;
   }
 }
+
+/* Ambulance page ordering: keep available ambulance options before the request/contact cards */
+.ambulance-custom-section-top {
+  margin-bottom: 28px;
+}
+
+.ambulance-custom-section-top .hospital-grid {
+  margin-top: 18px;
+}
