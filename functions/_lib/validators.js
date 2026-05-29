@@ -94,7 +94,7 @@ function summarizeDoctorChambers(chambers = [], type = "location") {
 
 
 function cleanServiceMedia(value) {
-  const media = cleanText(value, 1500000);
+  const media = cleanText(value, 800000);
   if (!media) return "";
   if (/^data:image\/(jpeg|jpg|png|webp);base64,/i.test(media)) return media;
   if (/^https?:\/\//i.test(media) || media.startsWith("/")) return cleanText(media, 1200);
@@ -153,7 +153,7 @@ export function normalizeDoctor(input, existing = {}) {
     fee: cleanText(input.fee, 120),
     services: cleanList(input.services || safeExisting.services || [], 16),
     languages: cleanList(input.languages || safeExisting.languages || [], 8),
-    photoUrl: cleanText(input.photoUrl, 1500000),
+    photoUrl: cleanText(input.photoUrl, 800000),
     bio: cleanText(input.bio, 900),
     sortOrder: Number.isFinite(Number(input.sortOrder)) ? Number(input.sortOrder) : 99,
     isActive: input.isActive !== false,

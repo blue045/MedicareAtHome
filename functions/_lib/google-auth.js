@@ -1,3 +1,4 @@
+import { constantTimeEqual, hmacHex, requiredSecret } from "./security.js";
 function cleanEnv(value) {
   return String(value || "").trim().replace(/^[\'\"]|[\'\"]$/g, "");
 }
@@ -12,13 +13,8 @@ function base64UrlDecode(text) {
   return atob(padded);
 }
 
-async function sha256(text) {
-  const buffer = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(text));
-  return [...new Uint8Array(buffer)].map((byte) => byte.toString(16).padStart(2, "0")).join("");
-}
-
 function stateSecret(env = {}) {
-  return cleanEnv(env.GOOGLE_OAUTH_STATE_SECRET || env.STORE_AUTH_SECRET || env.ADMIN_TOKEN || env.ADMIN_PASSWORD || "medicare-google-oauth-state");
+  return cleanEnv(env.GOOGLE_OAUTH_STATE_SECRET || env.STORE_AUTH_SECRET || requiredSecret(env, ["ADMIN_SESSION_SECRET", "ADMIN_PASSWORD", "ADMIN_TOKEN"], "GOOGLE_OAUTH_STATE_SECRET or ADMIN password", 12));
 }
 
 export function googleOAuthConfig(env = {}) {
@@ -65,15 +61,15 @@ export async function createGoogleState(next = "/profile", env = {}) {
     nonce: crypto.randomUUID ? crypto.randomUUID() : String(Math.random()).slice(2)
   };
   const encoded = base64UrlEncode(JSON.stringify(payload));
-  const sig = await sha256(`${encoded}.${stateSecret(env)}`);
+  const sig = await hmacHex(encoded, stateSecret(env));
   return `${encoded}.${sig}`;
 }
 
 export async function verifyGoogleState(state = "", env = {}) {
   const [encoded, sig] = String(state || "").split(".");
   if (!encoded || !sig) return { ok: false, next: "/login" };
-  const expected = await sha256(`${encoded}.${stateSecret(env)}`);
-  if (sig !== expected) return { ok: false, next: "/login" };
+  const expected = await hmacHex(encoded, stateSecret(env));
+  if (!constantTimeEqual(sig, expected)) return { ok: false, next: "/login" };
   try {
     const payload = JSON.parse(base64UrlDecode(encoded));
     const ageMs = Date.now() - Number(payload.ts || 0);

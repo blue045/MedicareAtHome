@@ -1,4 +1,5 @@
 import { error, handleThrown, json, readJson } from "../../../_lib/response.js";
+import { rateLimitRequest } from "../../../_lib/security.js";
 import { createComment, getStoreDb, getStoreUserFromRequest, listComments, listUserReviews, sanitizeCommentInput } from "../../../_lib/store-db.js";
 import { notifyTelegram } from "../../../_lib/telegram.js";
 
@@ -23,7 +24,9 @@ export async function onRequestGet({ request, env }) {
 export async function onRequestPost({ request, env }) {
   try {
     const db = await getStoreDb(env);
-    const body = await readJson(request);
+    const limit = await rateLimitRequest(db, request, env, "store_review", { limit: 8, windowSeconds: 15 * 60 });
+    if (!limit.ok) return error("Too many review attempts. Please wait and try again.", 429, undefined, { "retry-after": String(limit.retryAfter || 60) });
+    const body = await readJson(request, env);
     const result = sanitizeCommentInput(body);
     if (!result.ok) return error(result.error, 400);
 

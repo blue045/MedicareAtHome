@@ -1,14 +1,23 @@
+import { sendEmailVerificationEmail } from "../../../_lib/brevo.js";
 import { error, handleThrown, json, readJson } from "../../../_lib/response.js";
-import { avatarPhotoExists, createStoreToken, createUser, getStoreDb, getUserByEmail, getUserByPhone, sanitizeUserInput } from "../../../_lib/store-db.js";
+import { rateLimitRequest } from "../../../_lib/security.js";
+import { avatarPhotoExists, createStoreToken, createUser, createUserEmailVerificationToken, getStoreDb, getUserByEmail, getUserByPhone, isEmailVerificationRequired, sanitizeUserInput } from "../../../_lib/store-db.js";
 import { notifyTelegram } from "../../../_lib/telegram.js";
+
+function rateLimitError(result) {
+  return error("Too many attempts. Please wait and try again.", 429, undefined, { "retry-after": String(result.retryAfter || 60) });
+}
 
 export async function onRequestPost({ request, env }) {
   try {
-    const body = await readJson(request);
+    const db = await getStoreDb(env);
+    const limit = await rateLimitRequest(db, request, env, "store_signup", { limit: 5, windowSeconds: 15 * 60 });
+    if (!limit.ok) return rateLimitError(limit);
+
+    const body = await readJson(request, env);
     const result = sanitizeUserInput(body);
     if (!result.ok) return error(result.error, 400);
 
-    const db = await getStoreDb(env);
     if (result.value.email) {
       const existingEmail = await getUserByEmail(db, result.value.email);
       if (existingEmail) return error("This email is already registered. Please log in.", 409);
@@ -27,8 +36,16 @@ export async function onRequestPost({ request, env }) {
       Name: user.fullName,
       Email: user.email || "Not provided",
       Phone: user.phone || "Not provided",
-      UserID: user.id
+      UserID: user.id,
+      EmailVerified: user.emailVerified ? "Yes" : "Pending"
     });
+
+    if (isEmailVerificationRequired(env) && user.email && !user.emailVerified) {
+      const verificationToken = await createUserEmailVerificationToken(db, user.id, env);
+      const verificationEmail = await sendEmailVerificationEmail(env, user, verificationToken);
+      return json({ ok: true, needsVerification: true, user, verificationEmail, message: "Account created. Please verify your email before logging in." }, { status: 201 });
+    }
+
     const token = await createStoreToken(user, env);
     return json({ ok: true, token, user }, { status: 201 });
   } catch (err) {

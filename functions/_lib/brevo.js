@@ -240,6 +240,22 @@ export async function sendBrevoEmail(env = {}, { toEmail, toName = "Customer", s
   }
 }
 
+export async function sendEmailVerificationEmail(env = {}, user = {}, token = "") {
+  const base = siteUrl(env);
+  if (!base || !token) return { ok: false, skipped: true, reason: "Missing SITE_URL or verification token" };
+  const verifyUrl = `${base}/api/store/auth/verify-email?token=${encodeURIComponent(token)}`;
+  const name = cleanText(user.fullName || "Customer", 120);
+  const html = `<!doctype html><html><body style="margin:0;background:#f3f7ff;font-family:Arial,Helvetica,sans-serif;color:#0f172a;"><div style="max-width:620px;margin:0 auto;padding:22px;"><div style="background:#fff;border:1px solid #dbeafe;border-radius:22px;padding:24px;"><p style="font-size:13px;font-weight:800;letter-spacing:.12em;text-transform:uppercase;color:#2563eb;">Medicare At Home</p><h1 style="margin:0 0 12px;font-size:26px;">Verify your email</h1><p style="font-size:16px;line-height:1.6;color:#475569;">Hi ${escapeHtml(name)}, tap the button below to verify your email address. The link expires in 24 hours.</p><p><a href="${escapeHtml(verifyUrl)}" style="display:inline-block;background:#2563eb;color:#fff;text-decoration:none;padding:14px 22px;border-radius:999px;font-weight:800;">Verify email</a></p><p style="font-size:13px;line-height:1.6;color:#64748b;overflow-wrap:anywhere;">If the button does not work, open this link: ${escapeHtml(verifyUrl)}</p></div></div></body></html>`;
+  const text = `Medicare At Home\n\nHi ${name}, verify your email by opening this link. It expires in 24 hours:\n${verifyUrl}`;
+  return sendBrevoEmail(env, {
+    toEmail: user.email,
+    toName: name,
+    subject: "Verify your email - Medicare At Home",
+    htmlContent: html,
+    textContent: text
+  });
+}
+
 export async function notifyOrderPlacedEmail(env = {}, order = {}) {
   return sendBrevoEmail(env, {
     toEmail: order.userEmail,

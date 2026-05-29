@@ -422,7 +422,7 @@ function cleanEmoji(value = "") {
 function cleanServiceMedia(value = "") {
   const media = String(value || "").trim();
   if (!media) return "";
-  if (/^data:image\/(jpeg|jpg|png|webp);base64,/i.test(media)) return media.slice(0, 1500000);
+  if (/^data:image\/(jpeg|jpg|png|webp);base64,/i.test(media)) return media.slice(0, 800000);
   if (/^https?:\/\//i.test(media) || media.startsWith("/")) return media.replace(/[<>]/g, "").slice(0, 1200);
   return "";
 }
@@ -801,7 +801,7 @@ function setServicePhotoPreview(value = "") {
   preview.innerHTML = `<img src="${escapeHtml(photo)}" alt="Service photo preview" loading="lazy" />`;
 }
 
-function resizeImageFile(file, maxSize = 900, quality = 0.82, outputMime = "") {
+function resizeImageFile(file, maxSize = 760, quality = 0.74, outputMime = "") {
   return new Promise((resolve, reject) => {
     if (!file || !file.type.startsWith("image/")) {
       reject(new Error("Please choose a JPG, PNG, or WEBP image."));

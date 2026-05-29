@@ -1,4 +1,5 @@
 import { error, handleThrown, json, readJson } from "../../../_lib/response.js";
+import { rateLimitRequest } from "../../../_lib/security.js";
 import { notifyOrderPlacedEmail } from "../../../_lib/brevo.js";
 import { createOrder, createPrescriptionOrder, getStoreDb, getStoreUserFromRequest, listOrders, sanitizeCheckoutInput, sanitizePrescriptionOrderInput } from "../../../_lib/store-db.js";
 import { notifyTelegram } from "../../../_lib/telegram.js";
@@ -56,7 +57,9 @@ export async function onRequestPost({ request, env }) {
     const db = await getStoreDb(env);
     const user = await getStoreUserFromRequest(request, env, db);
     if (!user) return error("Please log in first.", 401);
-    const body = await readJson(request);
+    const limit = await rateLimitRequest(db, request, env, "store_order", { limit: 10, windowSeconds: 15 * 60 });
+    if (!limit.ok) return error("Too many order attempts. Please wait and try again.", 429, undefined, { "retry-after": String(limit.retryAfter || 60) });
+    const body = await readJson(request, env);
     const isPrescription = ["prescription", "prescribed", "prescribed_medicine", "custom"].includes(String(body.orderType || body.type || "").toLowerCase().replace(/[\s-]+/g, "_"));
     const result = isPrescription ? sanitizePrescriptionOrderInput(body) : sanitizeCheckoutInput(body);
     if (!result.ok) return error(result.error, 400);

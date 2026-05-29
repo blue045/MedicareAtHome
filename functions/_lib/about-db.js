@@ -12,7 +12,7 @@ function cleanText(value = "", max = 1000) {
 }
 
 function cleanImage(value = "") {
-  const image = cleanText(value, 1500000);
+  const image = cleanText(value, 800000);
   if (!image) return "";
   if (/^data:image\/(jpeg|jpg|png|webp);base64,/i.test(image)) return image;
   if (/^https?:\/\//i.test(image) || image.startsWith("/")) return cleanText(image, 1200);

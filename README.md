@@ -945,3 +945,15 @@ If you later want a robots file again for SEO crawlers, create `public/robots.tx
 - Redeploy after every environment variable change.
 - Keep main, store, and about databases separate if you want cleaner data management.
 - Run `npm run check` before deploying major edits.
+
+## Important free-plan security update
+
+This ZIP includes a security hardening pass that still works on free plans. Read `FREE_PLAN_SECURITY_NOTES.md` after uploading. At minimum, set these Cloudflare Pages environment variables before production use:
+
+```env
+ADMIN_SESSION_SECRET=make_this_long_random_32_chars_or_more
+STORE_AUTH_SECRET=make_this_long_random_32_chars_or_more
+```
+
+Optional email verification is available with Brevo free tier by setting `REQUIRE_EMAIL_VERIFICATION=1`, `SITE_URL`, `BREVO_API_KEY`, and `BREVO_SENDER_EMAIL`.
+

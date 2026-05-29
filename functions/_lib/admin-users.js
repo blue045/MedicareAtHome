@@ -1,4 +1,5 @@
 import { getDb } from "./db.js";
+import { constantTimeEqual, hashPasswordPbkdf2, isPbkdf2Hash, requiredSecret, sha256Hex, verifyPasswordPbkdf2 } from "./security.js";
 
 export const ADMIN_MODULES = [
   { key: "dashboard", label: "Dashboard" },
@@ -58,17 +59,25 @@ function rowToSubAdmin(row) {
   };
 }
 
-async function sha256(text) {
-  const buffer = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(String(text || "")));
-  return [...new Uint8Array(buffer)].map((byte) => byte.toString(16).padStart(2, "0")).join("");
+function adminSecret(env = {}) {
+  return requiredSecret(env, ["ADMIN_SESSION_SECRET", "ADMIN_TOKEN", "ADMIN_PASSWORD"], "ADMIN_SESSION_SECRET or ADMIN_PASSWORD", 12);
 }
 
-function adminSecret(env = {}) {
-  return String(env.ADMIN_PASSWORD || env.ADMIN_TOKEN || env.STORE_AUTH_SECRET || "medicare-admin-secret");
+async function legacySubAdminPasswordHash(username, password, env = {}) {
+  const secret = String(env.ADMIN_PASSWORD || env.ADMIN_TOKEN || env.STORE_AUTH_SECRET || "medicare-admin-secret");
+  return sha256Hex(`${String(username || "").toLowerCase()}:${String(password || "")}:${secret}`);
 }
 
 export async function hashSubAdminPassword(username, password, env = {}) {
-  return sha256(`${String(username || "").toLowerCase()}:${String(password || "")}:${adminSecret(env)}`);
+  return hashPasswordPbkdf2(String(username || "").toLowerCase(), password, env, adminSecret(env));
+}
+
+async function verifySubAdminPassword(storedHash, username, password, env = {}) {
+  if (isPbkdf2Hash(storedHash)) {
+    return verifyPasswordPbkdf2(storedHash, String(username || "").toLowerCase(), password, env, adminSecret(env));
+  }
+  const legacy = await legacySubAdminPasswordHash(username, password, env);
+  return constantTimeEqual(legacy, storedHash);
 }
 
 async function ensureAdminUsersSchema(db) {
@@ -108,8 +117,11 @@ export async function verifySubAdminLogin(env, username, password) {
   const row = await getSubAdminByUsername(env, username);
   if (!row || row.isActive === 0 || row.isActive === "0") return null;
   const expected = String(row.passwordHash || "");
-  const given = await hashSubAdminPassword(row.username, password, env);
-  if (!expected || expected !== given) return null;
+  if (!expected || !(await verifySubAdminPassword(expected, row.username, password, env))) return null;
+  if (!isPbkdf2Hash(expected)) {
+    const db = await getAdminUsersDb(env);
+    await db.execute({ sql: "UPDATE admin_users SET passwordHash = ?, updatedAt = ? WHERE id = ?", args: [await hashSubAdminPassword(row.username, password, env), new Date().toISOString(), row.id] });
+  }
   return rowToSubAdmin(row);
 }
 

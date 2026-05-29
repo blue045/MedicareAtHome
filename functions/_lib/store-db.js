@@ -1,4 +1,5 @@
 import { createClient } from "@libsql/client/web";
+import { base64UrlEncode, base64UrlDecode, constantTimeEqual, createVerificationToken, hmacHex, hashPasswordPbkdf2, isPbkdf2Hash, requiredSecret, sha256Hex, verifyEmailTokenInDb, verifyPasswordPbkdf2 } from "./security.js";
 
 const clients = new Map();
 const initialized = new Set();
@@ -82,7 +83,7 @@ function loginIdentifier(value = "") {
   return raw.includes("@") ? cleanEmail(raw) : normalizePhoneForLogin(raw);
 }
 
-function cleanImage(value, max = 1500000) {
+function cleanImage(value, max = 800000) {
   const image = cleanText(value, max);
   if (!image) return "";
   if (/^data:image\/(jpeg|jpg|png|webp);base64,/i.test(image)) return image;
@@ -129,7 +130,7 @@ function cleanOrderType(value) {
   return "product";
 }
 
-function cleanPrescriptionFile(value, max = 2000000) {
+function cleanPrescriptionFile(value, max = 1200000) {
   const file = cleanText(value, max);
   if (!file) return "";
   if (/^data:image\/(jpeg|jpg|png|webp);base64,/i.test(file)) return file;
@@ -138,41 +139,48 @@ function cleanPrescriptionFile(value, max = 2000000) {
   return "";
 }
 
-function base64UrlEncode(text) {
-  return btoa(text).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/g, "");
-}
-
-function base64UrlDecode(text) {
-  const normalized = String(text || "").replace(/-/g, "+").replace(/_/g, "/");
-  const padded = normalized.padEnd(Math.ceil(normalized.length / 4) * 4, "=");
-  return atob(padded);
-}
-
-async function sha256(text) {
-  const buffer = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(text));
-  return [...new Uint8Array(buffer)].map((byte) => byte.toString(16).padStart(2, "0")).join("");
-}
-
 function tokenSecret(env) {
-  // Store user sessions should not depend on ADMIN_PASSWORD/ADMIN_TOKEN.
-  // Those admin secrets may change when /su or sub-admin access is updated,
-  // which would otherwise log normal users out for no clear reason.
-  return cleanEnv(env.STORE_AUTH_SECRET || "medicare-store-secret");
+  // Store user sessions must use a real Cloudflare env secret.
+  // This avoids the unsafe shared default that could be forged.
+  return requiredSecret(env, ["STORE_AUTH_SECRET"], "STORE_AUTH_SECRET", 16);
+}
+
+function allowLegacyStoreSecrets(env = {}) {
+  return cleanEnv(env.ALLOW_LEGACY_STORE_TOKENS).toLowerCase() === "1";
 }
 
 function tokenSecretCandidates(env) {
-  return [...new Set([
-    tokenSecret(env),
-    cleanEnv(env.ADMIN_TOKEN || ""),
-    cleanEnv(env.ADMIN_PASSWORD || ""),
-    "medicare-store-secret"
-  ].filter(Boolean))];
+  const candidates = [tokenSecret(env)];
+  if (allowLegacyStoreSecrets(env)) {
+    candidates.push(cleanEnv(env.ADMIN_TOKEN || ""), cleanEnv(env.ADMIN_PASSWORD || ""), "medicare-store-secret");
+  }
+  return [...new Set(candidates.filter(Boolean))];
+}
+
+export function isEmailVerificationRequired(env = {}) {
+  const value = cleanEnv(env.REQUIRE_EMAIL_VERIFICATION || env.STORE_REQUIRE_EMAIL_VERIFICATION).toLowerCase();
+  return ["1", "true", "yes", "on"].includes(value);
+}
+
+async function legacyStorePasswordHash(identifier, password, env = {}) {
+  const pepper = cleanEnv(env.STORE_PASSWORD_PEPPER || env.STORE_AUTH_SECRET || "medicare-store-password");
+  const identity = loginIdentifier(identifier);
+  return sha256Hex(`${identity}::${String(password || "")}::${pepper}`);
 }
 
 export async function hashPassword(identifier, password, env = {}) {
-  const pepper = cleanEnv(env.STORE_PASSWORD_PEPPER || env.STORE_AUTH_SECRET || "medicare-store-password");
+  const secret = requiredSecret(env, ["STORE_AUTH_SECRET"], "STORE_AUTH_SECRET", 16);
   const identity = loginIdentifier(identifier);
-  return sha256(`${identity}::${String(password || "")}::${pepper}`);
+  return hashPasswordPbkdf2(identity, password, env, cleanEnv(env.STORE_PASSWORD_PEPPER || secret));
+}
+
+async function verifyStorePassword(storedHash, identifier, password, env = {}) {
+  if (isPbkdf2Hash(storedHash)) {
+    const secret = requiredSecret(env, ["STORE_AUTH_SECRET"], "STORE_AUTH_SECRET", 16);
+    return verifyPasswordPbkdf2(storedHash, loginIdentifier(identifier), password, env, cleanEnv(env.STORE_PASSWORD_PEPPER || secret));
+  }
+  const legacy = await legacyStorePasswordHash(identifier, password, env);
+  return constantTimeEqual(legacy, storedHash);
 }
 
 export async function createStoreToken(user, env) {
@@ -183,15 +191,15 @@ export async function createStoreToken(user, env) {
     exp: Date.now() + 1000 * 60 * 60 * 24 * 30
   };
   const encoded = base64UrlEncode(JSON.stringify(payload));
-  const sig = await sha256(`${encoded}.${tokenSecret(env)}`);
+  const sig = await hmacHex(encoded, tokenSecret(env));
   return `${encoded}.${sig}`;
 }
 
 export async function verifyStoreToken(token, env) {
   const [encoded, sig] = String(token || "").split(".");
   if (!encoded || !sig) return null;
-  const signatures = await Promise.all(tokenSecretCandidates(env).map((secret) => sha256(`${encoded}.${secret}`)));
-  if (!signatures.includes(sig)) return null;
+  const signatures = await Promise.all(tokenSecretCandidates(env).map((secret) => hmacHex(encoded, secret)));
+  if (!signatures.some((expected) => constantTimeEqual(expected, sig))) return null;
   try {
     const payload = JSON.parse(base64UrlDecode(encoded));
     if (!payload?.uid || Number(payload.exp || 0) < Date.now()) return null;
@@ -276,6 +284,8 @@ async function ensureStoreSchema(db) {
     passwordHash TEXT NOT NULL,
     googleId TEXT,
     authProvider TEXT DEFAULT 'password',
+    emailVerified INTEGER DEFAULT 1,
+    verifiedAt TEXT,
     createdAt TEXT,
     updatedAt TEXT
   )`);
@@ -283,6 +293,8 @@ async function ensureStoreSchema(db) {
   await addStoreColumn(db, "store_users", "phone", "TEXT");
   await addStoreColumn(db, "store_users", "googleId", "TEXT");
   await addStoreColumn(db, "store_users", "authProvider", "TEXT DEFAULT 'password'");
+  await addStoreColumn(db, "store_users", "emailVerified", "INTEGER DEFAULT 1");
+  await addStoreColumn(db, "store_users", "verifiedAt", "TEXT");
   try {
     await db.execute("CREATE UNIQUE INDEX IF NOT EXISTS uniq_store_users_phone ON store_users (phone) WHERE phone IS NOT NULL AND phone != ''");
     await db.execute("CREATE UNIQUE INDEX IF NOT EXISTS uniq_store_users_google_id ON store_users (googleId) WHERE googleId IS NOT NULL AND googleId != ''");
@@ -358,6 +370,14 @@ async function ensureStoreSchema(db) {
     updatedAt TEXT
   )`);
 
+  await db.execute(`CREATE TABLE IF NOT EXISTS store_email_verification_tokens (
+    tokenHash TEXT PRIMARY KEY,
+    userId INTEGER NOT NULL,
+    expiresAt TEXT NOT NULL,
+    usedAt TEXT,
+    createdAt TEXT
+  )`);
+
   await db.execute(`CREATE TABLE IF NOT EXISTS store_comments (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     productId INTEGER NOT NULL,
@@ -409,6 +429,7 @@ async function ensureStoreSchema(db) {
     // New reviews are still blocked by hasUserReviewedProduct() below.
   }
   await db.execute("CREATE INDEX IF NOT EXISTS idx_store_avatars_active_sort ON store_avatars (isActive, sortOrder, createdAt)");
+  await db.execute("CREATE INDEX IF NOT EXISTS idx_store_email_verify_user ON store_email_verification_tokens (userId, expiresAt)");
 
   await db.execute({
     sql: "UPDATE store_products SET description = '', updatedAt = ? WHERE description = ?",
@@ -492,6 +513,8 @@ function rowToUser(row) {
     email: publicEmail(row.email),
     phone: row.phone || "",
     authProvider: row.authProvider || (row.googleId ? "google" : "password"),
+    emailVerified: row.emailVerified !== 0 && row.emailVerified !== "0",
+    verifiedAt: row.verifiedAt || "",
     createdAt: row.createdAt || "",
     updatedAt: row.updatedAt || ""
   };
@@ -780,10 +803,12 @@ export async function createUser(db, input, env) {
   const phone = normalizePhoneForLogin(input.phone || "");
   const email = cleanEmail(input.email);
   const storedEmail = email || phoneEmailPlaceholder(phone);
+  const needsVerification = Boolean(email && isEmailVerificationRequired(env));
   const passwordHash = await hashPassword(email || phone, input.password, env);
+  const now = toIsoText(input.createdAt);
   const result = await db.execute({
-    sql: `INSERT INTO store_users (fullName, photoUrl, age, email, phone, passwordHash, createdAt, updatedAt) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
-    args: [input.fullName, input.photoUrl || "", input.age, storedEmail, phone, passwordHash, toIsoText(input.createdAt), toIsoText(input.updatedAt)]
+    sql: `INSERT INTO store_users (fullName, photoUrl, age, email, phone, passwordHash, emailVerified, verifiedAt, createdAt, updatedAt) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    args: [input.fullName, input.photoUrl || "", input.age, storedEmail, phone, passwordHash, needsVerification ? 0 : 1, needsVerification ? "" : now, now, toIsoText(input.updatedAt)]
   });
   return getUserById(db, String(result.lastInsertRowid));
 }
@@ -834,8 +859,8 @@ export async function createOrLinkGoogleUser(db, googleProfile = {}, env = {}) {
       const now = new Date().toISOString();
       const nextPhoto = byEmail.photoUrl || photoUrl || "";
       await db.execute({
-        sql: "UPDATE store_users SET googleId = ?, authProvider = ?, photoUrl = ?, updatedAt = ? WHERE id = ?",
-        args: [googleId, "google", nextPhoto, now, byEmail.id]
+        sql: "UPDATE store_users SET googleId = ?, authProvider = ?, photoUrl = ?, emailVerified = 1, verifiedAt = COALESCE(NULLIF(verifiedAt, ''), ?), updatedAt = ? WHERE id = ?",
+        args: [googleId, "google", nextPhoto, now, now, byEmail.id]
       });
       return { user: await getUserById(db, String(byEmail.id)), isNewUser: false, linkedExisting: true };
     }
@@ -846,8 +871,8 @@ export async function createOrLinkGoogleUser(db, googleProfile = {}, env = {}) {
   const impossiblePassword = crypto.randomUUID ? crypto.randomUUID() : `${googleId}.${Date.now()}.${Math.random()}`;
   const passwordHash = await hashPassword(storedEmail, impossiblePassword, env);
   const result = await db.execute({
-    sql: `INSERT INTO store_users (fullName, photoUrl, age, email, phone, passwordHash, googleId, authProvider, createdAt, updatedAt) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-    args: [fullName, photoUrl, 18, storedEmail, "", passwordHash, googleId, "google", now, now]
+    sql: `INSERT INTO store_users (fullName, photoUrl, age, email, phone, passwordHash, googleId, authProvider, emailVerified, verifiedAt, createdAt, updatedAt) VALUES (?, ?, ?, ?, ?, ?, ?, ?, 1, ?, ?, ?)`,
+    args: [fullName, photoUrl, 18, storedEmail, "", passwordHash, googleId, "google", now, now, now]
   });
   return { user: await getUserById(db, String(result.lastInsertRowid)), isNewUser: true, linkedExisting: false };
 }
@@ -868,8 +893,15 @@ export async function verifyLogin(db, identifier, password, env) {
   const row = await getUserByLoginIdentifier(db, identifier);
   if (!row) return null;
   const hashKey = isPhoneEmailPlaceholder(row.email) ? row.phone : (row.email || row.phone);
-  const passwordHash = await hashPassword(hashKey, password, env);
-  if (passwordHash !== row.passwordHash) return null;
+  const valid = await verifyStorePassword(String(row.passwordHash || ""), hashKey, password, env);
+  if (!valid) return null;
+  if (isEmailVerificationRequired(env) && publicEmail(row.email) && (row.emailVerified === 0 || row.emailVerified === "0")) {
+    throw new Error("Please verify your email before logging in. Check your inbox for the verification link.");
+  }
+  if (!isPbkdf2Hash(row.passwordHash)) {
+    const upgraded = await hashPassword(hashKey, password, env);
+    await db.execute({ sql: "UPDATE store_users SET passwordHash = ?, updatedAt = ? WHERE id = ?", args: [upgraded, new Date().toISOString(), row.id] });
+  }
   return rowToUser(row);
 }
 
@@ -1106,13 +1138,15 @@ export async function createOrder(db, userId, checkout) {
   const initialStatus = checkout.paymentMethod === "cod" ? "pending_payment" : "payment_submitted";
   const deliveryLocation = checkout.deliveryLocation || checkout.address || "";
   const selectedDeliveryCharge = deliveryChargeForLocation(product, deliveryLocation);
-  const result = await db.execute({
-    sql: `INSERT INTO store_orders (userId, productId, quantity, productName, productPrice, deliveryCharge, customerName, address, deliveryLocation, phone, paymentMethod, transactionId, senderNumber, deliveryPaymentMethod, status, createdAt, updatedAt)
-          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-    args: [userId, product.id, checkout.quantity, product.name, product.price, selectedDeliveryCharge, checkout.customerName, checkout.address, deliveryLocation, checkout.phone, checkout.paymentMethod, checkout.transactionId || "", checkout.senderNumber || "", checkout.deliveryPaymentMethod || "", initialStatus, now, now]
-  });
-  await db.execute({ sql: "UPDATE store_products SET stock = MAX(stock - ?, 0), updatedAt = ? WHERE id = ?", args: [checkout.quantity, now, product.id] });
-  return getOrderById(db, String(result.lastInsertRowid));
+  const batch = await db.batch([
+    { sql: `INSERT INTO store_orders (userId, productId, quantity, productName, productPrice, deliveryCharge, customerName, address, deliveryLocation, phone, paymentMethod, transactionId, senderNumber, deliveryPaymentMethod, status, createdAt, updatedAt)
+            SELECT ?, id, ?, name, price, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?
+            FROM store_products WHERE id = ? AND isActive != 0 AND stock >= ?`,
+      args: [userId, checkout.quantity, selectedDeliveryCharge, checkout.customerName, checkout.address, deliveryLocation, checkout.phone, checkout.paymentMethod, checkout.transactionId || "", checkout.senderNumber || "", checkout.deliveryPaymentMethod || "", initialStatus, now, now, product.id, checkout.quantity] },
+    { sql: "UPDATE store_products SET stock = stock - ?, updatedAt = ? WHERE id = ? AND stock >= ?", args: [checkout.quantity, now, product.id, checkout.quantity] }
+  ]);
+  if (Number(batch?.[0]?.rowsAffected || 0) < 1 || Number(batch?.[1]?.rowsAffected || 0) < 1) throw new Error("Not enough stock available.");
+  return getOrderById(db, String(batch?.[0]?.lastInsertRowid || ""));
 }
 
 export async function createPrescriptionOrder(db, userId, input) {
@@ -1171,12 +1205,11 @@ export async function updateOrderStatus(db, id, status) {
 
   if (current.status === "cancelled" && nextStatus !== "cancelled") {
     if (isInventoryOrder) {
-      const product = await getProductById(db, current.productId, true);
-      if (!product || product.stock < current.quantity) throw new Error("Not enough stock available to reactivate this order.");
-      await db.batch([
-        { sql: "UPDATE store_orders SET status = ?, updatedAt = ? WHERE id = ?", args: [nextStatus, now, id] },
-        { sql: "UPDATE store_products SET stock = MAX(stock - ?, 0), updatedAt = ? WHERE id = ?", args: [current.quantity, now, current.productId] }
+      const batch = await db.batch([
+        { sql: "UPDATE store_products SET stock = stock - ?, updatedAt = ? WHERE id = ? AND stock >= ?", args: [current.quantity, now, current.productId, current.quantity] },
+        { sql: "UPDATE store_orders SET status = ?, updatedAt = ? WHERE id = ?", args: [nextStatus, now, id] }
       ]);
+      if (Number(batch?.[0]?.rowsAffected || 0) < 1) throw new Error("Not enough stock available to reactivate this order.");
     } else {
       await db.execute({ sql: "UPDATE store_orders SET status = ?, updatedAt = ? WHERE id = ?", args: [nextStatus, now, id] });
     }
@@ -1351,4 +1384,13 @@ export async function deleteComment(db, id) {
 
 export async function replyToComment(db, id, adminReply, isVisible = true) {
   return createAdminCommentReply(db, id, adminReply, isVisible);
+}
+
+
+export async function createUserEmailVerificationToken(db, userId, env = {}) {
+  return createVerificationToken(db, userId, env);
+}
+
+export async function verifyUserEmailToken(db, token, env = {}) {
+  return verifyEmailTokenInDb(db, token, env);
 }

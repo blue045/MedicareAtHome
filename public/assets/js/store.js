@@ -874,7 +874,7 @@ async function loadPaymentSettings() {
   }
 }
 
-function resizeImageFile(file, maxSize = 900, quality = 0.82) {
+function resizeImageFile(file, maxSize = 760, quality = 0.74) {
   return new Promise((resolve, reject) => {
     if (!file || !file.type.startsWith("image/")) {
       reject(new Error("Please choose a JPG, PNG, or WEBP image."));
@@ -903,9 +903,9 @@ function resizeImageFile(file, maxSize = 900, quality = 0.82) {
 
 function readPrescriptionFile(file) {
   if (!file) return Promise.resolve("");
-  if (file.type.startsWith("image/")) return resizeImageFile(file, 1200, 0.82);
+  if (file.type.startsWith("image/")) return resizeImageFile(file, 900, 0.74).then((dataUrl) => { if (dataUrl.length > 950000) throw new Error("Prescription image is too large after compression. Please choose a smaller photo."); return dataUrl; });
   if (file.type === "application/pdf") {
-    if (file.size > 1600 * 1024) return Promise.reject(new Error("Prescription PDF must be under 1.6 MB."));
+    if (file.size > 900 * 1024) return Promise.reject(new Error("Prescription PDF must be under 900 KB on the free plan."));
     return new Promise((resolve, reject) => {
       const reader = new FileReader();
       reader.onerror = () => reject(new Error("Could not read the prescription file."));
@@ -1044,6 +1044,11 @@ async function signUp(payload) {
     method: "POST",
     body: JSON.stringify(payload)
   });
+  if (data.needsVerification) {
+    toast(data.message || "Account created. Please verify your email before logging in.");
+    if (isAuthPage()) window.location.href = "/login?verify=1";
+    return;
+  }
   storeState.token = data.token;
   storeState.user = data.user;
   localStorage.setItem(userTokenKey, storeState.token);
@@ -2267,7 +2272,7 @@ function bindStoreEvents() {
       const file = event.target.files?.[0];
       if (!file) return;
       try {
-        const dataUrl = await resizeImageFile(file, 520, 0.78);
+        const dataUrl = await resizeImageFile(file, 480, 0.72);
         setProfilePhotoPreview(dataUrl);
         toast("Avatar selected.");
       } catch (error) {

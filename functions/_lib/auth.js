@@ -1,5 +1,6 @@
 import { error, json, readJson } from "./response.js";
 import { ADMIN_MODULES, normalizePermissions, verifySubAdminLogin } from "./admin-users.js";
+import { constantTimeEqual, hmacHex, requiredSecret } from "./security.js";
 
 function configuredToken(env) {
   return String(env.ADMIN_TOKEN || env.ADMIN_PASSWORD || "").trim();
@@ -16,19 +17,11 @@ function base64UrlDecode(text) {
 }
 
 async function hmacSign(text, secret) {
-  const key = await crypto.subtle.importKey(
-    "raw",
-    new TextEncoder().encode(String(secret || "medicare-admin-secret")),
-    { name: "HMAC", hash: "SHA-256" },
-    false,
-    ["sign"]
-  );
-  const signature = await crypto.subtle.sign("HMAC", key, new TextEncoder().encode(String(text || "")));
-  return [...new Uint8Array(signature)].map((byte) => byte.toString(16).padStart(2, "0")).join("");
+  return hmacHex(text, secret);
 }
 
 function sessionSecret(env = {}) {
-  return String(env.ADMIN_SESSION_SECRET || env.ADMIN_PASSWORD || env.ADMIN_TOKEN || env.STORE_AUTH_SECRET || "medicare-admin-secret");
+  return requiredSecret(env, ["ADMIN_SESSION_SECRET", "ADMIN_PASSWORD", "ADMIN_TOKEN"], "ADMIN_SESSION_SECRET or ADMIN_PASSWORD", 12);
 }
 
 async function createSignedSession(payload, env) {
@@ -45,7 +38,7 @@ async function readSignedSession(token, env) {
   const [encoded, sig] = String(token || "").split(".");
   if (!encoded || !sig) return null;
   const expected = await hmacSign(encoded, sessionSecret(env));
-  if (expected !== sig) return null;
+  if (!constantTimeEqual(expected, sig)) return null;
   try {
     const payload = JSON.parse(base64UrlDecode(encoded));
     if (!payload || (payload.exp && Number(payload.exp) < Date.now())) return null;
@@ -121,7 +114,7 @@ export async function handleLogin(request, env) {
     return error("Master admin password is not configured", 500);
   }
 
-  if (password !== env.ADMIN_PASSWORD && password !== env.ADMIN_TOKEN) {
+  if (!constantTimeEqual(password, env.ADMIN_PASSWORD || "") && !constantTimeEqual(password, env.ADMIN_TOKEN || "")) {
     return error("Invalid master admin password", 401);
   }
 
