@@ -9208,3 +9208,94 @@ body:not(.superuser-body) :where(.section-kicker, .eyebrow, .badge, .status-pill
 .ambulance-custom-section-top .hospital-grid {
   margin-top: 18px;
 }
+
+
+/* Ambulance photo/card fix: use Store-style cards so custom ambulance photos affect layout and stay visible. */
+.ambulance-card-grid.store-grid {
+  display: grid !important;
+  grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+  gap: clamp(12px, 2vw, 18px) !important;
+  align-items: stretch !important;
+  margin-top: 18px !important;
+}
+
+.ambulance-option-card {
+  min-width: 0 !important;
+}
+
+.ambulance-option-content {
+  flex: 1 1 auto !important;
+}
+
+.ambulance-option-photo {
+  position: relative !important;
+  inset: auto !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  width: 100% !important;
+  height: auto !important;
+  aspect-ratio: 1 / 1 !important;
+  border-radius: 20px !important;
+  overflow: hidden !important;
+  font-size: clamp(2rem, 8vw, 4rem) !important;
+}
+
+.ambulance-option-photo img {
+  width: 100% !important;
+  height: 100% !important;
+  display: block !important;
+  object-fit: cover !important;
+  object-position: center !important;
+}
+
+.ambulance-option-body {
+  min-height: 82px !important;
+}
+
+.ambulance-option-info {
+  display: -webkit-box !important;
+  overflow: hidden !important;
+  -webkit-line-clamp: 2 !important;
+  -webkit-box-orient: vertical !important;
+}
+
+.ambulance-option-actions {
+  grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+}
+
+.ambulance-option-actions .btn:only-child {
+  grid-column: 1 / -1 !important;
+}
+
+@media (max-width: 760px) {
+  .ambulance-card-grid.store-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    gap: 10px !important;
+  }
+  .ambulance-option-body {
+    min-height: 72px !important;
+  }
+  .ambulance-option-actions {
+    grid-template-columns: 1fr !important;
+  }
+}
+
+@media (max-width: 420px) {
+  .ambulance-card-grid.store-grid {
+    gap: 8px !important;
+  }
+  .ambulance-option-card {
+    padding: 5px !important;
+    border-radius: 20px !important;
+  }
+  .ambulance-option-photo {
+    border-radius: 15px !important;
+  }
+  .ambulance-option-body h3 {
+    font-size: .78rem !important;
+  }
+  .ambulance-option-info {
+    font-size: .56rem !important;
+  }
+}

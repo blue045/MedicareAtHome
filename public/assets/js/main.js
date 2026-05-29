@@ -1485,16 +1485,19 @@ function renderAmbulancePage() {
       const itemPhone = normalizePhone(item.phone || settings.ambulancePhone || fallbackSettings.ambulancePhone);
       const itemWhatsapp = normalizeWhatsApp(item.whatsapp || item.phone || settings.ambulanceWhatsapp || settings.ambulancePhone || fallbackSettings.ambulanceWhatsapp);
       const itemMessage = encodeURIComponent(`Hello ${settings.siteName || "Medicare At Home"}, I need ${item.title || "ambulance"} support. Pickup: `);
+      const photo = String(item.photoUrl || "").trim();
       return `
-        <article class="doctor-card ambulance-custom-card">
-          ${item.photoUrl ? `<div class="doctor-card-photo has-photo"><img src="${escapeHtml(item.photoUrl)}" alt="${escapeHtml(item.title || "Ambulance")}" loading="lazy" /></div>` : ""}
-          <div class="store-card-body doctor-card-body">
-            <h3 class="doctor-name">${escapeHtml(item.title || "Ambulance")}</h3>
-            ${item.info ? `<p class="doctor-specialty">${escapeHtml(item.info)}</p>` : ""}
-            <div class="card-actions detail-actions">
-              ${itemPhone ? `<a class="btn btn-ghost" href="tel:${itemPhone}">Call</a>` : ""}
-              ${itemWhatsapp ? `<a class="btn btn-primary" href="https://wa.me/${itemWhatsapp}?text=${itemMessage}" target="_blank" rel="noopener noreferrer">WhatsApp</a>` : ""}
+        <article class="store-card ambulance-option-card">
+          <div class="store-card-link ambulance-option-content">
+            ${photo ? `<div class="store-product-photo ambulance-option-photo has-photo"><img src="${escapeHtml(photo)}" alt="${escapeHtml(item.title || "Ambulance")}" loading="lazy" decoding="async" /></div>` : `<div class="store-product-photo ambulance-option-photo store-product-photo-empty" aria-hidden="true">🚑</div>`}
+            <div class="store-card-body ambulance-option-body">
+              <h3>${escapeHtml(item.title || "Ambulance")}</h3>
+              ${item.info ? `<p class="store-stock ambulance-option-info">${escapeHtml(item.info)}</p>` : `<p class="store-stock ambulance-option-info">Contact us for this ambulance option.</p>`}
             </div>
+          </div>
+          <div class="card-actions store-card-actions ambulance-option-actions">
+            ${itemPhone ? `<a class="btn btn-ghost" href="tel:${itemPhone}">Call</a>` : ""}
+            ${itemWhatsapp ? `<a class="btn btn-primary" href="https://wa.me/${itemWhatsapp}?text=${itemMessage}" target="_blank" rel="noopener noreferrer">WhatsApp</a>` : ""}
           </div>
         </article>`;
     }).join("") : `<div class="empty-state">Custom ambulance cards will appear here after admin adds them.</div>`;
