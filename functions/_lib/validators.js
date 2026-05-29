@@ -50,6 +50,29 @@ function cleanUrl(value, max = 500) {
   return "";
 }
 
+function cleanImageUrl(value, max = 800) {
+  const text = cleanText(value, max);
+  if (!text) return "";
+  if (/^https?:\/\//i.test(text)) return text;
+  if (text.startsWith("/")) return text;
+  return "";
+}
+
+function cleanContentBlocks(value) {
+  const items = Array.isArray(value) ? value : [];
+  return items
+    .map((item) => item && typeof item === "object" && !Array.isArray(item) ? item : {})
+    .map((item) => ({
+      title: cleanText(item.title, 140),
+      copy: cleanText(item.copy, 700),
+      imageUrl: cleanImageUrl(item.imageUrl, 800),
+      buttonLabel: cleanText(item.buttonLabel, 80),
+      buttonUrl: cleanUrl(item.buttonUrl, 500)
+    }))
+    .filter((item) => item.title || item.copy || item.imageUrl)
+    .slice(0, 12);
+}
+
 export function normalizePageContent(input, existing = {}) {
   const source = input && typeof input === "object" && !Array.isArray(input) ? input : {};
   const previous = existing && typeof existing === "object" && !Array.isArray(existing) ? existing : {};
@@ -67,13 +90,21 @@ export function normalizePageContent(input, existing = {}) {
       badge: pickText(incoming, old, "badge", 80),
       title: pickText(incoming, old, "title", 240),
       copy: pickText(incoming, old, "copy", 500),
-      body: pickText(incoming, old, "body", 2200),
+      body: pickText(incoming, old, "body", 4000),
+      bannerImage: Object.prototype.hasOwnProperty.call(incoming, "bannerImage") ? cleanImageUrl(incoming.bannerImage, 800) : (old.bannerImage || ""),
+      noticeTitle: pickText(incoming, old, "noticeTitle", 120),
+      noticeText: pickText(incoming, old, "noticeText", 900),
+      listTitle: pickText(incoming, old, "listTitle", 160),
+      listCopy: pickText(incoming, old, "listCopy", 700),
+      bottomNote: pickText(incoming, old, "bottomNote", 900),
+      blocks: Object.prototype.hasOwnProperty.call(incoming, "blocks") ? cleanContentBlocks(incoming.blocks) : cleanContentBlocks(old.blocks),
       primaryLabel: pickText(incoming, old, "primaryLabel", 80),
       primaryUrl: pickUrl(incoming, old, "primaryUrl"),
       secondaryLabel: pickText(incoming, old, "secondaryLabel", 80),
       secondaryUrl: pickUrl(incoming, old, "secondaryUrl"),
       layout,
-      hidden: incoming.hidden === true || incoming.hidden === "true" || incoming.hidden === 1 || incoming.hidden === "1"
+      hidden: incoming.hidden === true || incoming.hidden === "true" || incoming.hidden === 1 || incoming.hidden === "1",
+      hideDefaultModule: incoming.hideDefaultModule === true || incoming.hideDefaultModule === "true" || incoming.hideDefaultModule === 1 || incoming.hideDefaultModule === "1"
     };
   }
   return output;

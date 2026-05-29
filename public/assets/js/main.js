@@ -962,13 +962,55 @@ function editablePageContentFor(pageKey, settings = state.settings) {
     copy: copyText,
     badge: custom.badge || "",
     body: custom.body || "",
+    bannerImage: custom.bannerImage || "",
+    noticeTitle: custom.noticeTitle || "",
+    noticeText: custom.noticeText || "",
+    listTitle: custom.listTitle || "",
+    listCopy: custom.listCopy || "",
+    bottomNote: custom.bottomNote || "",
+    blocks: Array.isArray(custom.blocks) ? custom.blocks : [],
     primaryLabel: custom.primaryLabel || "",
     primaryUrl: custom.primaryUrl || "",
     secondaryLabel: custom.secondaryLabel || "",
     secondaryUrl: custom.secondaryUrl || "",
     layout: custom.layout || "standard",
-    hidden: custom.hidden === true
+    hidden: custom.hidden === true,
+    hideDefaultModule: custom.hideDefaultModule === true
   };
+}
+
+function pageDefaultModuleSelectors(pageKey) {
+  return {
+    services: ["#servicesGrid"],
+    store: [".store-hub-grid"],
+    doctors: [".doctor-search-bar", "#doctorsGrid"],
+    ambulance: ["#customAmbulanceGrid", "#ambulanceSupportSection"],
+    hospital: ["#hospitalGrid"],
+    blood: [".blood-search-bar", "#bloodGrid", ".blood-add-cta"],
+    contact: ["#contactList", "#contact .panel-card"],
+    about: ["#aboutPage .about-layout"]
+  }[pageKey] || [];
+}
+
+function applyDefaultModuleVisibility(content) {
+  pageDefaultModuleSelectors(content.key).forEach((selector) => {
+    qsa(selector).forEach((node) => {
+      node.hidden = content.hideDefaultModule === true;
+      node.classList.toggle("admin-hidden-page-module", content.hideDefaultModule === true);
+    });
+  });
+}
+
+function ensureAdminBlock(anchor, selector, className) {
+  let node = qs(selector);
+  if (!node) {
+    node = document.createElement("div");
+    node.className = className;
+    const attr = selector.match(/\[([^=]+)=\"([^\"]+)\"\]/);
+    if (attr) node.setAttribute(attr[1], attr[2]);
+    anchor?.insertAdjacentElement("afterend", node);
+  }
+  return node;
 }
 
 function renderEditablePageText(settings = state.settings) {
@@ -986,27 +1028,18 @@ function renderEditablePageText(settings = state.settings) {
 
   document.body.classList.remove("page-layout-standard", "page-layout-compact", "page-layout-wide", "page-layout-split", "page-layout-cards-first");
   document.body.classList.add(`page-layout-${content.layout || "standard"}`);
+  document.body.classList.toggle("content-page-custom-only", content.hideDefaultModule === true);
 
   const host = copy?.parentElement || title?.parentElement || qs("main");
   if (!host) return;
 
-  let bodyBlock = qs("[data-admin-page-body]");
-  if (!bodyBlock) {
-    bodyBlock = document.createElement("div");
-    bodyBlock.dataset.adminPageBody = "true";
-    bodyBlock.className = "admin-page-body-text";
-    copy?.insertAdjacentElement("afterend", bodyBlock);
-  }
+  let anchor = copy || title;
+  const bodyBlock = ensureAdminBlock(anchor, '[data-admin-page-body="true"]', "admin-page-body-text");
   bodyBlock.innerHTML = content.body ? escapeHtml(content.body).replaceAll("\n", "<br />") : "";
   bodyBlock.hidden = !content.body;
+  anchor = bodyBlock;
 
-  let actions = qs("[data-admin-page-actions]");
-  if (!actions) {
-    actions = document.createElement("div");
-    actions.dataset.adminPageActions = "true";
-    actions.className = "hero-actions page-admin-actions";
-    bodyBlock.insertAdjacentElement("afterend", actions);
-  }
+  const actions = ensureAdminBlock(anchor, '[data-admin-page-actions="true"]', "hero-actions page-admin-actions");
   const buttons = [];
   if (content.primaryLabel) {
     const href = content.primaryUrl || "/Contact";
@@ -1018,6 +1051,42 @@ function renderEditablePageText(settings = state.settings) {
   }
   actions.innerHTML = buttons.join("");
   actions.hidden = buttons.length === 0;
+  anchor = actions;
+
+  const banner = ensureAdminBlock(anchor, '[data-admin-page-banner="true"]', "admin-page-banner");
+  banner.innerHTML = content.bannerImage ? `<img src="${escapeHtml(content.bannerImage)}" alt="${escapeHtml(content.title || "Page image")}" loading="lazy" />` : "";
+  banner.hidden = !content.bannerImage;
+  anchor = banner;
+
+  const notice = ensureAdminBlock(anchor, '[data-admin-page-notice="true"]', "admin-page-notice");
+  notice.innerHTML = (content.noticeTitle || content.noticeText) ? `<strong>${escapeHtml(content.noticeTitle || "Note")}</strong><span>${escapeHtml(content.noticeText || "")}</span>` : "";
+  notice.hidden = !(content.noticeTitle || content.noticeText);
+  anchor = notice;
+
+  const blocks = ensureAdminBlock(anchor, '[data-admin-page-blocks="true"]', "admin-page-blocks");
+  blocks.innerHTML = content.blocks.length ? content.blocks.map((block) => `
+    <article class="admin-page-block-card">
+      ${block.imageUrl ? `<img src="${escapeHtml(block.imageUrl)}" alt="${escapeHtml(block.title || "Content image")}" loading="lazy" />` : ""}
+      <div>
+        ${block.title ? `<h3>${escapeHtml(block.title)}</h3>` : ""}
+        ${block.copy ? `<p>${escapeHtml(block.copy)}</p>` : ""}
+        ${block.buttonLabel ? `<a class="btn btn-ghost" href="${escapeHtml(block.buttonUrl || "#")}">${escapeHtml(block.buttonLabel)}</a>` : ""}
+      </div>
+    </article>
+  `).join("") : "";
+  blocks.hidden = content.blocks.length === 0;
+  anchor = blocks;
+
+  const listIntro = ensureAdminBlock(anchor, '[data-admin-page-list-intro="true"]', "admin-page-list-intro");
+  listIntro.innerHTML = (content.listTitle || content.listCopy) ? `<h2>${escapeHtml(content.listTitle || "More information")}</h2><p>${escapeHtml(content.listCopy || "")}</p>` : "";
+  listIntro.hidden = !(content.listTitle || content.listCopy);
+  anchor = listIntro;
+
+  const bottom = ensureAdminBlock(anchor, '[data-admin-page-bottom-note="true"]', "admin-page-bottom-note");
+  bottom.innerHTML = content.bottomNote ? escapeHtml(content.bottomNote).replaceAll("\n", "<br />") : "";
+  bottom.hidden = !content.bottomNote;
+
+  applyDefaultModuleVisibility(content);
 }
 
 function renderStats() {

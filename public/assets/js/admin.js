@@ -1799,6 +1799,31 @@ function fillMainPageForm() {
   qs("#statsSetting").value = formatStats(settings.stats || []);
 }
 
+function parseContentBlocks(value = "") {
+  return String(value || "")
+    .split("\n")
+    .map((line) => line.trim())
+    .filter(Boolean)
+    .map((line) => {
+      const parts = line.split("|").map((part) => part.trim());
+      return {
+        title: parts[0] || "",
+        copy: parts[1] || "",
+        imageUrl: parts[2] || "",
+        buttonLabel: parts[3] || "",
+        buttonUrl: parts[4] || ""
+      };
+    })
+    .filter((block) => block.title || block.copy || block.imageUrl)
+    .slice(0, 12);
+}
+
+function formatContentBlocks(blocks = []) {
+  return (Array.isArray(blocks) ? blocks : [])
+    .map((block) => [block.title, block.copy, block.imageUrl, block.buttonLabel, block.buttonUrl].map((value) => String(value || "").trim()).join(" | "))
+    .join("\n");
+}
+
 function normalizeAdminPageContentEntry(page, settings = state.settings) {
   const stored = settings?.pageContent && typeof settings.pageContent === "object" ? settings.pageContent[page.key] || {} : {};
   return {
@@ -1807,12 +1832,20 @@ function normalizeAdminPageContentEntry(page, settings = state.settings) {
     title: stored.title || settings?.[page.title] || page.label,
     copy: stored.copy || settings?.[page.copy] || "",
     body: stored.body || "",
+    bannerImage: stored.bannerImage || "",
+    noticeTitle: stored.noticeTitle || "",
+    noticeText: stored.noticeText || "",
+    listTitle: stored.listTitle || "",
+    listCopy: stored.listCopy || "",
+    bottomNote: stored.bottomNote || "",
+    blocks: Array.isArray(stored.blocks) ? stored.blocks : [],
     primaryLabel: stored.primaryLabel || "",
     primaryUrl: stored.primaryUrl || "",
     secondaryLabel: stored.secondaryLabel || "",
     secondaryUrl: stored.secondaryUrl || "",
     layout: stored.layout || "standard",
-    hidden: stored.hidden === true
+    hidden: stored.hidden === true,
+    hideDefaultModule: stored.hideDefaultModule === true
   };
 }
 
@@ -1831,12 +1864,20 @@ function currentContentEditorEntry() {
     title: qs("#contentPageTitleField")?.value.trim() || "",
     copy: qs("#contentPageCopyField")?.value.trim() || "",
     body: qs("#contentPageBodyField")?.value.trim() || "",
+    bannerImage: qs("#contentBannerImage")?.value.trim() || "",
+    noticeTitle: qs("#contentNoticeTitle")?.value.trim() || "",
+    noticeText: qs("#contentNoticeText")?.value.trim() || "",
+    listTitle: qs("#contentListTitle")?.value.trim() || "",
+    listCopy: qs("#contentListCopy")?.value.trim() || "",
+    bottomNote: qs("#contentBottomNote")?.value.trim() || "",
+    blocks: parseContentBlocks(qs("#contentBlocksField")?.value || ""),
     primaryLabel: qs("#contentPrimaryLabel")?.value.trim() || "",
     primaryUrl: qs("#contentPrimaryUrl")?.value.trim() || "",
     secondaryLabel: qs("#contentSecondaryLabel")?.value.trim() || "",
     secondaryUrl: qs("#contentSecondaryUrl")?.value.trim() || "",
     layout: qs("#contentPageLayout")?.value || "standard",
-    hidden: qs("#contentPageHidden")?.checked === true
+    hidden: qs("#contentPageHidden")?.checked === true,
+    hideDefaultModule: qs("#contentHideDefaultModule")?.checked === true
   };
 }
 
@@ -1848,11 +1889,13 @@ function renderContentPageCards() {
   grid.hidden = false;
   grid.innerHTML = editableContentPages.map((page) => {
     const entry = pageContent[page.key];
+    const blockCount = Array.isArray(entry.blocks) ? entry.blocks.length : 0;
     return `
       <button class="content-page-card" type="button" data-content-page-card="${escapeHtml(page.key)}">
         <span class="content-page-card-icon">${escapeHtml(page.icon)}</span>
         <span class="content-page-card-title">${escapeHtml(entry.label || page.label)}</span>
         <span class="content-page-card-copy">${escapeHtml(entry.title || page.label)}</span>
+        <span class="content-page-card-meta">${blockCount} custom block${blockCount === 1 ? "" : "s"}${entry.hideDefaultModule ? " · custom-only page" : ""}</span>
         <span class="content-page-card-status ${entry.hidden ? "is-hidden" : ""}">${entry.hidden ? "Hidden from menu" : "Visible"}</span>
       </button>
     `;
@@ -1872,18 +1915,26 @@ function fillContentEditor(pageKey) {
   const entry = normalizeAdminPageContentEntry(page, state.settings || {});
   if (qs("#contentEditorPageKey")) qs("#contentEditorPageKey").value = page.key;
   if (qs("#contentEditorKicker")) qs("#contentEditorKicker").textContent = `${page.label} page`;
-  if (qs("#contentEditorTitle")) qs("#contentEditorTitle").textContent = `Edit ${page.label}`;
+  if (qs("#contentEditorTitle")) qs("#contentEditorTitle").textContent = `Edit full ${page.label} page`;
   if (qs("#contentPageLabel")) qs("#contentPageLabel").value = entry.label || "";
   if (qs("#contentPageBadge")) qs("#contentPageBadge").value = entry.badge || "";
   if (qs("#contentPageTitleField")) qs("#contentPageTitleField").value = entry.title || "";
   if (qs("#contentPageCopyField")) qs("#contentPageCopyField").value = entry.copy || "";
   if (qs("#contentPageBodyField")) qs("#contentPageBodyField").value = entry.body || "";
+  if (qs("#contentBannerImage")) qs("#contentBannerImage").value = entry.bannerImage || "";
+  if (qs("#contentNoticeTitle")) qs("#contentNoticeTitle").value = entry.noticeTitle || "";
+  if (qs("#contentNoticeText")) qs("#contentNoticeText").value = entry.noticeText || "";
+  if (qs("#contentListTitle")) qs("#contentListTitle").value = entry.listTitle || "";
+  if (qs("#contentListCopy")) qs("#contentListCopy").value = entry.listCopy || "";
+  if (qs("#contentBlocksField")) qs("#contentBlocksField").value = formatContentBlocks(entry.blocks || []);
+  if (qs("#contentBottomNote")) qs("#contentBottomNote").value = entry.bottomNote || "";
   if (qs("#contentPrimaryLabel")) qs("#contentPrimaryLabel").value = entry.primaryLabel || "";
   if (qs("#contentPrimaryUrl")) qs("#contentPrimaryUrl").value = entry.primaryUrl || "";
   if (qs("#contentSecondaryLabel")) qs("#contentSecondaryLabel").value = entry.secondaryLabel || "";
   if (qs("#contentSecondaryUrl")) qs("#contentSecondaryUrl").value = entry.secondaryUrl || "";
   if (qs("#contentPageLayout")) qs("#contentPageLayout").value = entry.layout || "standard";
   if (qs("#contentPageHidden")) qs("#contentPageHidden").checked = entry.hidden === true;
+  if (qs("#contentHideDefaultModule")) qs("#contentHideDefaultModule").checked = entry.hideDefaultModule === true;
   renderContentPreview();
 }
 
@@ -1913,6 +1964,18 @@ function renderContentPreview() {
     if (entry.secondaryLabel) buttons.push(`<span class="btn btn-ghost">${escapeHtml(entry.secondaryLabel)}</span>`);
     actions.innerHTML = buttons.join("");
     actions.hidden = buttons.length === 0;
+  }
+  const advanced = qs("#contentPreviewAdvanced");
+  if (advanced) {
+    const parts = [];
+    if (entry.bannerImage) parts.push(`<img class="content-preview-banner" src="${escapeHtml(entry.bannerImage)}" alt="" loading="lazy" />`);
+    if (entry.noticeTitle || entry.noticeText) parts.push(`<div class="content-preview-note"><strong>${escapeHtml(entry.noticeTitle || "Notice")}</strong><span>${escapeHtml(entry.noticeText || "")}</span></div>`);
+    if (entry.listTitle || entry.listCopy) parts.push(`<div class="content-preview-list"><strong>${escapeHtml(entry.listTitle || "Main section")}</strong><span>${escapeHtml(entry.listCopy || "")}</span></div>`);
+    if (entry.blocks.length) parts.push(`<div class="content-preview-block-grid">${entry.blocks.map((block) => `<article><strong>${escapeHtml(block.title || "Content block")}</strong><span>${escapeHtml(block.copy || "")}</span></article>`).join("")}</div>`);
+    if (entry.bottomNote) parts.push(`<div class="content-preview-note"><span>${escapeHtml(entry.bottomNote)}</span></div>`);
+    if (entry.hideDefaultModule) parts.push(`<div class="content-preview-note"><strong>Custom-only page</strong><span>The default page cards/list/form will be hidden.</span></div>`);
+    advanced.innerHTML = parts.join("");
+    advanced.hidden = parts.length === 0;
   }
 }
 

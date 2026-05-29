@@ -16,7 +16,7 @@
         }
       })();
     </script>
-    <link rel="stylesheet" href="/assets/css/styles.css?v=content-pages-v1" />
+    <link rel="stylesheet" href="/assets/css/styles.css?v=full-content-pages-v2" />
     <link rel="icon" href="/assets/img/logo.png" type="image/png" />
   </head>
   <body class="superuser-body">
@@ -234,8 +234,46 @@
                   </div>
 
                   <div class="form-group full">
-                    <label for="contentPageBodyField">Extra body text</label>
-                    <textarea class="form-textarea tall-textarea" id="contentPageBodyField" placeholder="Optional extra content. Line breaks are kept on the public page."></textarea>
+                    <label for="contentPageBodyField">Full page intro / body text</label>
+                    <textarea class="form-textarea tall-textarea" id="contentPageBodyField" placeholder="Write the main page content. Line breaks are kept on the public page."></textarea>
+                    <small class="form-help">Use this for the main text of the selected page.</small>
+                  </div>
+
+                  <div class="form-group full">
+                    <label for="contentBannerImage">Top image / banner URL</label>
+                    <input class="form-input" id="contentBannerImage" placeholder="https://example.com/page-photo.jpg" />
+                    <small class="form-help">Optional. Shows a wide image below the page intro. Use a public image URL to keep the free plan light.</small>
+                  </div>
+
+                  <div class="form-group">
+                    <label for="contentNoticeTitle">Notice / highlight title</label>
+                    <input class="form-input" id="contentNoticeTitle" placeholder="Example: Before booking" />
+                  </div>
+
+                  <div class="form-group">
+                    <label for="contentNoticeText">Notice / highlight text</label>
+                    <textarea class="form-textarea" id="contentNoticeText" placeholder="Important text shown in a highlighted box."></textarea>
+                  </div>
+
+                  <div class="form-group">
+                    <label for="contentListTitle">Main section title</label>
+                    <input class="form-input" id="contentListTitle" placeholder="Example: Available doctors" />
+                  </div>
+
+                  <div class="form-group">
+                    <label for="contentListCopy">Main section description</label>
+                    <textarea class="form-textarea" id="contentListCopy" placeholder="Text shown before the page cards/list/form."></textarea>
+                  </div>
+
+                  <div class="form-group full">
+                    <label for="contentBlocksField">Custom page blocks</label>
+                    <textarea class="form-textarea tall-textarea" id="contentBlocksField" placeholder="One block per line:&#10;Title | Description | Image URL | Button label | Button URL"></textarea>
+                    <small class="form-help">Add editable cards/sections to the page. Format: Title | Description | Image URL | Button label | Button URL</small>
+                  </div>
+
+                  <div class="form-group full">
+                    <label for="contentBottomNote">Bottom note / footer text for this page</label>
+                    <textarea class="form-textarea" id="contentBottomNote" placeholder="Optional note shown near the bottom of the page."></textarea>
                   </div>
 
                   <div class="form-group">
@@ -274,12 +312,18 @@
                     <span>Hide this page from the hamburger/navigation menu</span>
                   </label>
 
+                  <label class="check-row content-visibility-row">
+                    <input type="checkbox" id="contentHideDefaultModule" />
+                    <span>Hide the default cards/list/form on this page and show only edited content</span>
+                  </label>
+
                   <section class="content-preview-card full" aria-label="Live content preview">
                     <p class="section-kicker" id="contentPreviewBadge">Preview</p>
                     <h3 id="contentPreviewTitle">Page title</h3>
                     <p id="contentPreviewCopy">Page description preview.</p>
                     <div id="contentPreviewBody" class="content-preview-body"></div>
                     <div id="contentPreviewActions" class="hero-actions"></div>
+                    <div id="contentPreviewAdvanced" class="content-preview-advanced"></div>
                   </section>
 
                   <div class="form-actions full">
@@ -761,6 +805,6 @@
     </main>
 
     <div class="toast" id="toast" aria-live="polite" aria-atomic="true"></div>
-    <script type="module" src="/assets/js/admin.js?v=content-pages-v1"></script>
+    <script type="module" src="/assets/js/admin.js?v=full-content-pages-v2"></script>
   </body>
 </html>
