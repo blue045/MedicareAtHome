@@ -8,6 +8,7 @@ export const ADMIN_MODULES = [
   { key: "contact", label: "Contact Settings" },
   { key: "blood", label: "Blood" },
   { key: "ambulance", label: "Ambulance" },
+  { key: "hospitals", label: "Hospitals" },
   { key: "doctors", label: "Doctors" },
   { key: "comments", label: "User Reviews" },
   { key: "store-users", label: "User Login Information" },
@@ -25,6 +26,7 @@ function cleanText(value = "", max = 180) {
 export function normalizePermissionKey(value = "") {
   const key = cleanText(value, 40).toLowerCase();
   if (key === "reviews") return "comments";
+  if (key === "hospital") return "hospitals";
   if (key === "add-products") return "products";
   if (key === "user-reviews") return "comments";
   if (key === "user-login-information") return "store-users";

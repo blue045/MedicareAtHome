@@ -107,6 +107,8 @@ function cleanPaymentMethod(value) {
   if (method === "cash" || method === "cash_on_delivery" || method === "cod") return "cod";
   if (method === "bkash" || method === "b_kash") return "bkash";
   if (method === "nagad") return "nagad";
+  if (method === "rocket") return "rocket";
+  if (["bank", "bank_transfer", "bd_bank", "bangladeshi_bank_transfer"].includes(method)) return "bank_transfer";
   if (["bkash_nagad", "bkash_and_nagad", "bkashnagad", "bkash/nagad"].includes(method)) return "bkash_nagad";
   return "cod";
 }
@@ -115,6 +117,8 @@ function cleanDeliveryPaymentMethod(value) {
   const method = cleanText(value, 32).toLowerCase().replace(/[\s-]+/g, "_");
   if (method === "bkash" || method === "b_kash") return "bkash";
   if (method === "nagad") return "nagad";
+  if (method === "rocket") return "rocket";
+  if (["bank", "bank_transfer", "bd_bank", "bangladeshi_bank_transfer"].includes(method)) return "bank_transfer";
   return "";
 }
 
@@ -365,6 +369,8 @@ async function ensureStoreSchema(db) {
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     bkashNumber TEXT,
     nagadNumber TEXT,
+    rocketNumber TEXT,
+    bankTransferInfo TEXT,
     instructions TEXT,
     createdAt TEXT,
     updatedAt TEXT
@@ -396,6 +402,8 @@ async function ensureStoreSchema(db) {
   await addStoreColumn(db, "store_orders", "senderNumber", "TEXT");
   await addStoreColumn(db, "store_orders", "deliveryPaymentMethod", "TEXT");
   await addStoreColumn(db, "store_orders", "deliveryLocation", "TEXT");
+  await addStoreColumn(db, "store_payment_settings", "rocketNumber", "TEXT");
+  await addStoreColumn(db, "store_payment_settings", "bankTransferInfo", "TEXT");
 
   await addStoreColumn(db, "store_products", "productType", "TEXT NOT NULL DEFAULT 'medicine'");
   await addStoreColumn(db, "store_products", "feniDeliveryCharge", "REAL NOT NULL DEFAULT 0");
@@ -538,7 +546,9 @@ function rowToPaymentSettings(row) {
     id: row?.id ? String(row.id) : "",
     bkashNumber: row?.bkashNumber || "",
     nagadNumber: row?.nagadNumber || "",
-    instructions: row?.instructions || "Send payment through bKash and Nagad first, then enter your sender number and Transaction ID. For Cash on Delivery, customers must pay the delivery fee first by bKash or Nagad; the product price is paid on delivery.",
+    rocketNumber: row?.rocketNumber || "",
+    bankTransferInfo: row?.bankTransferInfo || "",
+    instructions: row?.instructions || "Send payment through bKash, Nagad, Rocket, or Bangladeshi Bank Transfer first, then enter your sender number and Transaction ID. For Cash on Delivery, customers must pay the delivery fee first by one configured manual method; the product price is paid on delivery.",
     createdAt: row?.createdAt || "",
     updatedAt: row?.updatedAt || ""
   };
@@ -740,8 +750,8 @@ export function sanitizeCheckoutInput(input = {}) {
   const transactionId = cleanText(input.transactionId, 80);
   const senderNumber = cleanPhone(input.senderNumber);
   if (!customerName || !address || !phone || !productId) return { ok: false, error: "Full name, address, phone and product are required." };
-  if (paymentMethod !== "cod" && (!senderNumber || !transactionId)) return { ok: false, error: "Sender number and Transaction ID are required for bKash and Nagad payment." };
-  if (paymentMethod === "cod" && (!deliveryPaymentMethod || !senderNumber || !transactionId)) return { ok: false, error: "For Cash on Delivery, pay the delivery fee first by bKash or Nagad, then enter sender number and Transaction ID." };
+  if (paymentMethod !== "cod" && (!senderNumber || !transactionId)) return { ok: false, error: "Sender number and Transaction ID are required for manual payment." };
+  if (paymentMethod === "cod" && (!deliveryPaymentMethod || !senderNumber || !transactionId)) return { ok: false, error: "For Cash on Delivery, pay the delivery fee first by bKash, Nagad, Rocket, or Bank Transfer, then enter sender number and Transaction ID." };
   return { ok: true, value: { customerName, address, deliveryLocation, phone, productId, quantity, paymentMethod, deliveryPaymentMethod, transactionId, senderNumber } };
 }
 
@@ -750,13 +760,17 @@ export function sanitizePrescriptionOrderInput(input = {}) {
   const address = cleanText(input.address, 600);
   const deliveryLocation = cleanText(input.deliveryLocation, 160);
   const phone = cleanPhone(input.phone);
-  const medicineName = cleanText(input.medicineName || input.customMedicineName, 220);
+  const rawMedicineNames = Array.isArray(input.medicineNames)
+    ? input.medicineNames
+    : [input.medicineName || input.customMedicineName];
+  const medicineNames = rawMedicineNames.map((item) => cleanText(item, 220)).filter(Boolean).slice(0, 20);
+  const medicineName = medicineNames.join(", ");
   const quantity = Math.max(1, Math.min(99, Math.round(numberValue(input.quantity, 1))));
   const prescriptionText = cleanText(input.prescriptionText || input.prescriptionNote || "", 1200);
   const prescriptionFileUrl = cleanPrescriptionFile(input.prescriptionFileUrl || input.prescriptionFile || "");
   if (!customerName || !address || !phone) return { ok: false, error: "Full name, address and phone are required." };
   if (!medicineName && !prescriptionText && !prescriptionFileUrl) return { ok: false, error: "Type the medicine name or upload/provide a prescription." };
-  return { ok: true, value: { customerName, address, deliveryLocation, phone, medicineName, quantity, prescriptionText, prescriptionFileUrl } };
+  return { ok: true, value: { customerName, address, deliveryLocation, phone, medicineName, medicineNames, quantity, prescriptionText, prescriptionFileUrl } };
 }
 
 export function sanitizeOrderPaymentInput(input = {}) {
@@ -764,8 +778,8 @@ export function sanitizeOrderPaymentInput(input = {}) {
   const deliveryPaymentMethod = cleanDeliveryPaymentMethod(input.deliveryPaymentMethod || input.codAdvanceMethod || "");
   const transactionId = cleanText(input.transactionId, 80);
   const senderNumber = cleanPhone(input.senderNumber);
-  if (paymentMethod !== "cod" && (!senderNumber || !transactionId)) return { ok: false, error: "Sender number and Transaction ID are required for bKash and Nagad payment." };
-  if (paymentMethod === "cod" && (!deliveryPaymentMethod || !senderNumber || !transactionId)) return { ok: false, error: "For Cash on Delivery, pay the delivery fee first by bKash or Nagad, then enter sender number and Transaction ID." };
+  if (paymentMethod !== "cod" && (!senderNumber || !transactionId)) return { ok: false, error: "Sender number and Transaction ID are required for manual payment." };
+  if (paymentMethod === "cod" && (!deliveryPaymentMethod || !senderNumber || !transactionId)) return { ok: false, error: "For Cash on Delivery, pay the delivery fee first by bKash, Nagad, Rocket, or Bank Transfer, then enter sender number and Transaction ID." };
   return { ok: true, value: { paymentMethod, deliveryPaymentMethod, transactionId, senderNumber } };
 }
 
@@ -781,7 +795,9 @@ export function sanitizePaymentSettingsInput(input = {}, existing = {}) {
   return {
     bkashNumber: cleanPhone(input.bkashNumber ?? existing.bkashNumber ?? ""),
     nagadNumber: cleanPhone(input.nagadNumber ?? existing.nagadNumber ?? ""),
-    instructions: cleanText(input.instructions ?? existing.instructions ?? "", 700) || rowToPaymentSettings(existing).instructions,
+    rocketNumber: cleanPhone(input.rocketNumber ?? existing.rocketNumber ?? ""),
+    bankTransferInfo: cleanText(input.bankTransferInfo ?? existing.bankTransferInfo ?? "", 900),
+    instructions: cleanText(input.instructions ?? existing.instructions ?? "", 900) || rowToPaymentSettings(existing).instructions,
     createdAt: existing.createdAt || new Date(),
     updatedAt: new Date()
   };
@@ -1031,14 +1047,14 @@ export async function updatePaymentSettings(db, input) {
   const settings = sanitizePaymentSettingsInput(input, current);
   if (current.id) {
     await db.execute({
-      sql: "UPDATE store_payment_settings SET bkashNumber = ?, nagadNumber = ?, instructions = ?, updatedAt = ? WHERE id = ?",
-      args: [settings.bkashNumber, settings.nagadNumber, settings.instructions, toIsoText(settings.updatedAt), current.id]
+      sql: "UPDATE store_payment_settings SET bkashNumber = ?, nagadNumber = ?, rocketNumber = ?, bankTransferInfo = ?, instructions = ?, updatedAt = ? WHERE id = ?",
+      args: [settings.bkashNumber, settings.nagadNumber, settings.rocketNumber, settings.bankTransferInfo, settings.instructions, toIsoText(settings.updatedAt), current.id]
     });
     return getPaymentSettings(db);
   }
   const result = await db.execute({
-    sql: "INSERT INTO store_payment_settings (bkashNumber, nagadNumber, instructions, createdAt, updatedAt) VALUES (?, ?, ?, ?, ?)",
-    args: [settings.bkashNumber, settings.nagadNumber, settings.instructions, toIsoText(settings.createdAt), toIsoText(settings.updatedAt)]
+    sql: "INSERT INTO store_payment_settings (bkashNumber, nagadNumber, rocketNumber, bankTransferInfo, instructions, createdAt, updatedAt) VALUES (?, ?, ?, ?, ?, ?, ?)",
+    args: [settings.bkashNumber, settings.nagadNumber, settings.rocketNumber, settings.bankTransferInfo, settings.instructions, toIsoText(settings.createdAt), toIsoText(settings.updatedAt)]
   });
   const created = await db.execute({ sql: "SELECT * FROM store_payment_settings WHERE id = ? LIMIT 1", args: [String(result.lastInsertRowid)] });
   return rowToPaymentSettings(created.rows[0]);
@@ -1118,21 +1134,40 @@ export async function removeCartItem(db, userId, cartId) {
   return Number(result.rowsAffected || 0);
 }
 
+function paymentSettingForMethod(settings = {}, method = "") {
+  if (method === "bkash") return { configured: settings.bkashNumber, label: "bKash" };
+  if (method === "nagad") return { configured: settings.nagadNumber, label: "Nagad" };
+  if (method === "rocket") return { configured: settings.rocketNumber, label: "Rocket" };
+  if (method === "bank_transfer") return { configured: settings.bankTransferInfo, label: "Bangladeshi Bank Transfer" };
+  if (method === "bkash_nagad") return { configured: settings.bkashNumber || settings.nagadNumber, label: "bKash/Nagad" };
+  return { configured: "", label: "Manual payment" };
+}
+
+function hasAnyManualPayment(settings = {}) {
+  return Boolean(settings.bkashNumber || settings.nagadNumber || settings.rocketNumber || settings.bankTransferInfo);
+}
+
+function ensurePaymentConfigured(settings = {}, method = "") {
+  if (method === "cod") return;
+  const payment = paymentSettingForMethod(settings, method);
+  if (!payment.configured) throw new Error(`${payment.label} payment details are not configured yet. Please use Cash on Delivery.`);
+}
+
+function ensureCodAdvanceConfigured(settings = {}, method = "") {
+  const payment = paymentSettingForMethod(settings, method);
+  if (!payment.configured) throw new Error(`${payment.label} details are not configured yet. Ask admin to add payment details first.`);
+}
+
 export async function createOrder(db, userId, checkout) {
   const product = await getProductById(db, checkout.productId);
   if (!product) throw new Error("Product not found.");
   if (product.stock < checkout.quantity) throw new Error("Not enough stock available.");
   const paymentSettings = await getPaymentSettings(db);
-  if (checkout.paymentMethod === "bkash" || checkout.paymentMethod === "nagad") {
-    const configuredNumber = checkout.paymentMethod === "bkash" ? paymentSettings.bkashNumber : paymentSettings.nagadNumber;
-    if (!configuredNumber) throw new Error(`${checkout.paymentMethod === "bkash" ? "bKash" : "Nagad"} payment number is not configured yet. Please use Cash on Delivery.`);
-  }
-  if (checkout.paymentMethod === "bkash_nagad" && !paymentSettings.bkashNumber && !paymentSettings.nagadNumber) {
-    throw new Error("bKash/Nagad payment number is not configured yet. Please use Cash on Delivery.");
-  }
+  if (!hasAnyManualPayment(paymentSettings)) throw new Error("No manual payment method is configured yet. Ask admin to add bKash, Nagad, Rocket, or Bank Transfer details first.");
   if (checkout.paymentMethod === "cod") {
-    const configuredNumber = checkout.deliveryPaymentMethod === "bkash" ? paymentSettings.bkashNumber : paymentSettings.nagadNumber;
-    if (!configuredNumber) throw new Error(`${checkout.deliveryPaymentMethod === "bkash" ? "bKash" : "Nagad"} number is not configured yet. Ask admin to add a payment number first.`);
+    ensureCodAdvanceConfigured(paymentSettings, checkout.deliveryPaymentMethod);
+  } else {
+    ensurePaymentConfigured(paymentSettings, checkout.paymentMethod);
   }
   const now = new Date().toISOString();
   const initialStatus = checkout.paymentMethod === "cod" ? "pending_payment" : "payment_submitted";
@@ -1244,16 +1279,11 @@ export async function submitPrescriptionOrderPayment(db, userId, id, paymentInpu
   if (currentStatus !== "pending_payment") throw new Error("Payment details can only be submitted while the order is pending payment.");
 
   const paymentSettings = await getPaymentSettings(db);
-  if (paymentInput.paymentMethod === "bkash" || paymentInput.paymentMethod === "nagad") {
-    const configuredNumber = paymentInput.paymentMethod === "bkash" ? paymentSettings.bkashNumber : paymentSettings.nagadNumber;
-    if (!configuredNumber) throw new Error(`${paymentInput.paymentMethod === "bkash" ? "bKash" : "Nagad"} payment number is not configured yet. Please use Cash on Delivery.`);
-  }
-  if (paymentInput.paymentMethod === "bkash_nagad" && !paymentSettings.bkashNumber && !paymentSettings.nagadNumber) {
-    throw new Error("bKash/Nagad payment number is not configured yet. Please use Cash on Delivery.");
-  }
+  if (!hasAnyManualPayment(paymentSettings)) throw new Error("No manual payment method is configured yet. Ask admin to add bKash, Nagad, Rocket, or Bank Transfer details first.");
   if (paymentInput.paymentMethod === "cod") {
-    const configuredNumber = paymentInput.deliveryPaymentMethod === "bkash" ? paymentSettings.bkashNumber : paymentSettings.nagadNumber;
-    if (!configuredNumber) throw new Error(`${paymentInput.deliveryPaymentMethod === "bkash" ? "bKash" : "Nagad"} number is not configured yet. Ask admin to add a payment number first.`);
+    ensureCodAdvanceConfigured(paymentSettings, paymentInput.deliveryPaymentMethod);
+  } else {
+    ensurePaymentConfigured(paymentSettings, paymentInput.paymentMethod);
   }
 
   const now = new Date().toISOString();

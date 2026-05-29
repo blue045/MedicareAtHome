@@ -2,7 +2,7 @@ const panelRoot = window.location.pathname.split("/").filter(Boolean)[0] === "su
 const panelMode = panelRoot === "/su" ? "master" : "sub";
 const tokenKey = panelMode === "master" ? "medicare_master_admin_token" : "medicare_sub_admin_token";
 const adminPageKey = panelMode === "master" ? "medicare_master_admin_active_page" : "medicare_sub_admin_active_page";
-const validAdminPages = ["dashboard", "main", "content", "about", "doctors", "ambulance", "blood", "bloodDetail", "services", "products", "orders", "store-users", "comments", "contact", "sub-admins"];
+const validAdminPages = ["dashboard", "main", "content", "about", "doctors", "ambulance", "hospitals", "blood", "bloodDetail", "services", "products", "orders", "store-users", "comments", "contact", "sub-admins"];
 
 function getSavedAdminPage() {
   try {
@@ -195,6 +195,8 @@ const state = {
   token: localStorage.getItem(tokenKey) || "",
   doctors: [],
   bloodProfiles: [],
+  ambulances: [],
+  hospitals: [],
   bloodTab: "approved",
   bloodDetailId: "",
   settings: {},
@@ -211,6 +213,8 @@ const state = {
   storePaymentSettings: {
     bkashNumber: "",
     nagadNumber: "",
+    rocketNumber: "",
+    bankTransferInfo: "",
     instructions: "Send payment through bKash and Nagad first, then enter your sender number and Transaction ID. For Cash on Delivery, customers must pay the delivery fee first by bKash or Nagad; the product price is paid on delivery."
   },
   storeError: "",
@@ -228,6 +232,7 @@ const contentPageFields = [
   ["navStoreLabel", "Store nav label"],
   ["navDoctorsLabel", "Doctors nav label"],
   ["navAmbulanceLabel", "Ambulance nav label"],
+  ["navHospitalLabel", "Hospital nav label"],
   ["navBloodLabel", "Blood nav label"],
   ["navHowItWorksLabel", "About nav label"],
   ["navContactLabel", "Contact nav label"],
@@ -239,6 +244,8 @@ const contentPageFields = [
   ["doctorsPageCopy", "Doctors page description"],
   ["ambulancePageTitle", "Ambulance page title"],
   ["ambulancePageCopy", "Ambulance page description"],
+  ["hospitalPageTitle", "Hospital page title"],
+  ["hospitalPageCopy", "Hospital page description"],
   ["bloodPageTitle", "Blood page title"],
   ["bloodPageCopy", "Blood page description"],
   ["howPageTitle", "About page title"],
@@ -322,6 +329,7 @@ const chamberTimeOptions = (() => {
 const fields = [
   "name",
   "designation",
+  "designationNote",
   "specialty",
   "degrees",
   "hospital",
@@ -549,6 +557,7 @@ function serviceEntriesFromSettings(settings = {}) {
   const serviceTags = Array.isArray(settings.serviceTags) ? settings.serviceTags : [];
   const icons = settings.serviceIcons && typeof settings.serviceIcons === "object" ? settings.serviceIcons : {};
   const descriptions = settings.serviceDescriptions && typeof settings.serviceDescriptions === "object" ? settings.serviceDescriptions : {};
+  const photosByService = settings.servicePhotos && typeof settings.servicePhotos === "object" ? settings.servicePhotos : {};
   const seen = new Set();
   const entries = [];
 
@@ -560,6 +569,7 @@ function serviceEntriesFromSettings(settings = {}) {
     entries.push({
       name,
       emoji: String(icons[name] || icons[key] || "").trim(),
+      photos: Array.isArray(photosByService[name]) ? photosByService[name] : (Array.isArray(photosByService[key]) ? photosByService[key] : []),
       description: String(descriptions[name] || descriptions[key] || "").trim().slice(0, 700)
     });
   });
@@ -572,6 +582,7 @@ function serviceEntriesFromSettings(settings = {}) {
     entries.push({
       name,
       emoji: String(emoji || "").trim(),
+      photos: Array.isArray(photosByService[name]) ? photosByService[name] : (Array.isArray(photosByService[key]) ? photosByService[key] : []),
       description: String(descriptions[name] || descriptions[key] || "").trim().slice(0, 700)
     });
   });
@@ -584,6 +595,7 @@ function serviceEntriesFromSettings(settings = {}) {
     entries.push({
       name,
       emoji: "",
+      photos: Array.isArray(photosByService[name]) ? photosByService[name] : (Array.isArray(photosByService[key]) ? photosByService[key] : []),
       description: String(description || "").trim().slice(0, 700)
     });
   });
@@ -596,6 +608,7 @@ function serviceSettingsFromDraft() {
   const serviceTags = [];
   const serviceIcons = {};
   const serviceDescriptions = {};
+  const servicePhotos = {};
   const seen = new Set();
 
   entries.forEach((entry) => {
@@ -608,9 +621,11 @@ function serviceSettingsFromDraft() {
     if (media) serviceIcons[name] = media;
     const description = String(entry?.description || "").trim().slice(0, 700);
     if (description) serviceDescriptions[name] = description;
+    const photos = parsePhotoLines(Array.isArray(entry?.photos) ? entry.photos.join("\n") : (entry?.photos || "")).slice(0, 8);
+    if (photos.length) servicePhotos[name] = photos;
   });
 
-  return { serviceTags, serviceIcons, serviceDescriptions };
+  return { serviceTags, serviceIcons, serviceDescriptions, servicePhotos };
 }
 
 function cloneServiceEntries(entries = []) {
@@ -645,7 +660,9 @@ function resetServiceForm() {
   if (servicePhotoUpload) servicePhotoUpload.value = "";
   const servicePhotoUrl = qs("#servicePhotoUrl");
   if (servicePhotoUrl) servicePhotoUrl.value = "";
+  if (qs("#servicePhotos")) qs("#servicePhotos").value = "";
   setServicePhotoPreview("");
+  setServicePhotosPreview([]);
 }
 
 function fillServiceForm(entry) {
@@ -658,6 +675,7 @@ function fillServiceForm(entry) {
   const servicePhotoUpload = qs("#servicePhotoUpload");
   if (servicePhotoUpload) servicePhotoUpload.value = "";
   setServicePhotoPreview(media);
+  setCurrentServicePhotos(entry.photos || []);
   qs("#serviceDescription").value = entry.description || "";
   qs("#serviceForm")?.scrollIntoView({ behavior: "smooth", block: "start" });
 }
@@ -680,6 +698,7 @@ function renderServiceList() {
           <div>
             <strong>${escapeHtml(entry.name)}</strong>
             <p>${escapeHtml(entry.description || "No description added yet.")}</p>
+            ${Array.isArray(entry.photos) && entry.photos.length ? `<p>${entry.photos.length} gallery photo${entry.photos.length === 1 ? "" : "s"}</p>` : ""}
           </div>
         </div>
         <div class="admin-list-actions">
@@ -714,6 +733,7 @@ async function saveService(event) {
   const originalName = qs("#serviceOriginalName").value.trim();
   const name = qs("#serviceName").value.trim().slice(0, 90);
   const emoji = cleanServiceMedia(qs("#servicePhotoUrl")?.value || "");
+  const photos = getCurrentServicePhotos();
   const description = qs("#serviceDescription").value.trim().slice(0, 700);
 
   if (!name) {
@@ -734,9 +754,9 @@ async function saveService(event) {
   }
 
   if (originalName) {
-    state.serviceDraft = state.serviceDraft.map((entry) => normalizeServiceKey(entry.name) === originalKey ? { name, emoji, description } : entry);
+    state.serviceDraft = state.serviceDraft.map((entry) => normalizeServiceKey(entry.name) === originalKey ? { name, emoji, photos, description } : entry);
   } else {
-    state.serviceDraft = [...state.serviceDraft, { name, emoji, description }];
+    state.serviceDraft = [...state.serviceDraft, { name, emoji, photos, description }];
   }
 
   renderServiceList();
@@ -799,6 +819,26 @@ function setServicePhotoPreview(value = "") {
 
   preview.classList.add("has-photo");
   preview.innerHTML = `<img src="${escapeHtml(photo)}" alt="Service photo preview" loading="lazy" />`;
+}
+
+
+function getCurrentServicePhotos() {
+  return parsePhotoLines(qs("#servicePhotos")?.value || "").slice(0, 8);
+}
+
+function setCurrentServicePhotos(items = []) {
+  const photos = (Array.isArray(items) ? items : []).map((item) => cleanServiceMedia(item)).filter(Boolean).slice(0, 8);
+  if (qs("#servicePhotos")) qs("#servicePhotos").value = formatPhotoLines(photos);
+  setServicePhotosPreview(photos);
+}
+
+function setServicePhotosPreview(items = []) {
+  const preview = qs("#servicePhotosPreview");
+  if (!preview) return;
+  const photos = (Array.isArray(items) ? items : []).filter(Boolean);
+  preview.innerHTML = photos.length
+    ? photos.map((photo) => `<span class="mini-photo-thumb"><img src="${escapeHtml(photo)}" alt="Service gallery photo" loading="lazy" /></span>`).join("")
+    : `<span class="form-help">No gallery photos selected</span>`;
 }
 
 function resizeImageFile(file, maxSize = 760, quality = 0.74, outputMime = "") {
@@ -904,6 +944,7 @@ function permissionForPage(page = "dashboard") {
     about: "content",
     doctors: "doctors",
     ambulance: "ambulance",
+    hospitals: "hospitals",
     blood: "blood",
     bloodDetail: "blood",
     services: "services",
@@ -1090,7 +1131,7 @@ async function loadAdminData() {
   }
 
   try {
-    if (["main", "content", "services", "ambulance", "contact"].includes(page)) {
+    if (["main", "content", "services", "contact"].includes(page)) {
       const settingsData = await api("/api/settings");
       state.settings = settingsData.settings || {};
       fillMainPageForm();
@@ -1099,6 +1140,26 @@ async function loadAdminData() {
       fillSettingsForm();
       fillAmbulanceForm();
       updatePendingDeleteUI();
+      return;
+    }
+
+
+    if (page === "ambulance") {
+      const [settingsData, ambulancesData] = await Promise.all([
+        api("/api/settings"),
+        api("/api/ambulances?includeInactive=true")
+      ]);
+      state.settings = settingsData.settings || {};
+      state.ambulances = ambulancesData.ambulances || [];
+      fillAmbulanceForm();
+      renderAmbulanceAdminList();
+      return;
+    }
+
+    if (page === "hospitals") {
+      const hospitalsData = await api("/api/hospitals?includeInactive=true");
+      state.hospitals = hospitalsData.hospitals || [];
+      renderHospitalAdminList();
       return;
     }
 
@@ -1181,16 +1242,20 @@ async function loadAdminData() {
     }
 
     // Dashboard: load only the metric data the current admin is allowed to access.
-    const [doctorsData, bloodData, productsData, ordersData] = await Promise.all([
+    const [doctorsData, bloodData, productsData, ordersData, hospitalsData, ambulancesData] = await Promise.all([
       hasAccess("doctors") ? api("/api/doctors?includeInactive=true").catch(() => ({ doctors: [] })) : Promise.resolve({ doctors: [] }),
       hasAccess("blood") ? api("/api/blood?status=all").catch(() => ({ profiles: [] })) : Promise.resolve({ profiles: [] }),
       hasAccess("products") ? api("/api/store/products?includeInactive=true").catch(() => ({ products: [] })) : Promise.resolve({ products: [] }),
-      hasAccess("orders") ? api("/api/store/admin/orders").catch(() => ({ orders: [] })) : Promise.resolve({ orders: [] })
+      hasAccess("orders") ? api("/api/store/admin/orders").catch(() => ({ orders: [] })) : Promise.resolve({ orders: [] }),
+      hasAccess("hospitals") ? api("/api/hospitals?includeInactive=true").catch(() => ({ hospitals: [] })) : Promise.resolve({ hospitals: [] }),
+      hasAccess("ambulance") ? api("/api/ambulances?includeInactive=true").catch(() => ({ ambulances: [] })) : Promise.resolve({ ambulances: [] })
     ]);
     state.doctors = doctorsData.doctors || [];
     state.bloodProfiles = bloodData.profiles || [];
     state.products = productsData.products || [];
     state.storeOrders = ordersData.orders || [];
+    state.hospitals = hospitalsData.hospitals || [];
+    state.ambulances = ambulancesData.ambulances || [];
     state.storeError = "";
     updateDashboardMetrics();
   } catch (error) {
@@ -1203,6 +1268,8 @@ async function loadAdminData() {
 function showAdminPageError(page, message) {
   const selectors = {
     doctors: ["#adminDoctorList"],
+    ambulance: ["#adminAmbulanceList"],
+    hospitals: ["#adminHospitalList"],
     blood: ["#adminBloodList"],
     bloodDetail: ["#adminBloodDetail"],
     products: ["#adminProductList"],
@@ -1615,6 +1682,7 @@ function getDoctorPayload() {
   return {
     name: qs("#name").value.trim(),
     designation: qs("#designation").value.trim(),
+    designationNote: qs("#designationNote")?.value.trim() || "",
     specialty: qs("#specialty").value.trim(),
     degrees: qs("#degrees").value.trim(),
     hospital: qs("#hospital").value.trim(),
@@ -1628,6 +1696,16 @@ function getDoctorPayload() {
   };
 }
 
+
+function updateDesignationNoteVisibility() {
+  const group = qs("#designationNoteGroup");
+  const input = qs("#designationNote");
+  const select = qs("#designation");
+  const show = Boolean(select?.value);
+  if (group) group.hidden = !show;
+  if (input && !show) input.value = "";
+}
+
 function resetDoctorForm() {
   qs("#doctorForm").reset();
   qs("#doctorId").value = "";
@@ -1638,6 +1716,7 @@ function resetDoctorForm() {
   renderChamberRows([]);
   qs("#isActive").checked = true;
   qs("#doctorFormTitle").textContent = "Add doctor";
+  updateDesignationNoteVisibility();
 }
 
 function fillDoctorForm(doctor) {
@@ -1656,6 +1735,7 @@ function fillDoctorForm(doctor) {
   const photoUpload = qs("#photoUpload");
   if (photoUpload) photoUpload.value = "";
   setPhotoPreview(doctor.photoUrl || "");
+  updateDesignationNoteVisibility();
   setAdminPage("doctors", true);
   qs("#doctorForm")?.scrollIntoView({ behavior: "smooth", block: "start" });
 }
@@ -1838,6 +1918,8 @@ function productOutsideFeniDeliveryCharge(product = {}) {
 
 function paymentMethodLabel(method = "") {
   if (["bkash", "nagad", "bkash_nagad"].includes(method)) return "bKash and Nagad";
+  if (method === "rocket") return "Rocket";
+  if (method === "bank_transfer") return "Bangladeshi Bank Transfer";
   return "Cash on Delivery";
 }
 
@@ -2062,6 +2144,8 @@ function fillPaymentSettingsForm() {
   const settings = state.storePaymentSettings || {};
   if (qs("#storeBkashNumber")) qs("#storeBkashNumber").value = settings.bkashNumber || "";
   if (qs("#storeNagadNumber")) qs("#storeNagadNumber").value = settings.nagadNumber || "";
+  if (qs("#storeRocketNumber")) qs("#storeRocketNumber").value = settings.rocketNumber || "";
+  if (qs("#storeBankTransferInfo")) qs("#storeBankTransferInfo").value = settings.bankTransferInfo || "";
   if (qs("#storePaymentInstructions")) qs("#storePaymentInstructions").value = settings.instructions || "";
 }
 
@@ -2070,6 +2154,8 @@ async function savePaymentSettings(event) {
   const payload = {
     bkashNumber: qs("#storeBkashNumber")?.value.trim() || "",
     nagadNumber: qs("#storeNagadNumber")?.value.trim() || "",
+    rocketNumber: qs("#storeRocketNumber")?.value.trim() || "",
+    bankTransferInfo: qs("#storeBankTransferInfo")?.value.trim() || "",
     instructions: qs("#storePaymentInstructions")?.value.trim() || ""
   };
   const data = await api("/api/store/payment-settings", { method: "PATCH", body: JSON.stringify(payload) });
@@ -2529,6 +2615,199 @@ async function deleteSubAdminAccount(id) {
   await loadAdminData();
 }
 
+
+function setAmbulancePhotoPreview(value = "") {
+  const preview = qs("#ambulancePhotoPreview");
+  if (!preview) return;
+  const photo = cleanServiceMedia(value);
+  preview.classList.toggle("has-photo", Boolean(photo));
+  preview.innerHTML = photo ? `<img src="${escapeHtml(photo)}" alt="Ambulance photo" loading="lazy" />` : "No ambulance photo selected";
+}
+
+function resetAmbulanceEntryForm() {
+  ["ambulanceEntryId", "ambulanceEntryTitle", "ambulanceEntryInfo", "ambulanceEntryPhotoUrl", "ambulanceEntryPhone", "ambulanceEntryWhatsapp"].forEach((id) => {
+    const el = qs(`#${id}`); if (el) el.value = "";
+  });
+  if (qs("#ambulanceEntrySortOrder")) qs("#ambulanceEntrySortOrder").value = "99";
+  if (qs("#ambulanceEntryIsActive")) qs("#ambulanceEntryIsActive").checked = true;
+  if (qs("#ambulanceEntryFormTitle")) qs("#ambulanceEntryFormTitle").textContent = "Add custom ambulance";
+  const upload = qs("#ambulanceEntryPhotoUpload"); if (upload) upload.value = "";
+  setAmbulancePhotoPreview("");
+}
+
+function fillAmbulanceEntryForm(item = {}) {
+  if (qs("#ambulanceEntryFormTitle")) qs("#ambulanceEntryFormTitle").textContent = `Edit ${item.title || "ambulance"}`;
+  const values = {
+    ambulanceEntryId: item.id || "",
+    ambulanceEntryTitle: item.title || "",
+    ambulanceEntryInfo: item.info || "",
+    ambulanceEntryPhotoUrl: item.photoUrl || "",
+    ambulanceEntryPhone: item.phone || "",
+    ambulanceEntryWhatsapp: item.whatsapp || "",
+    ambulanceEntrySortOrder: item.sortOrder ?? 99
+  };
+  Object.entries(values).forEach(([id, value]) => { const el = qs(`#${id}`); if (el) el.value = value; });
+  if (qs("#ambulanceEntryIsActive")) qs("#ambulanceEntryIsActive").checked = item.isActive !== false;
+  setAmbulancePhotoPreview(item.photoUrl || "");
+  qs("#ambulanceEntryForm")?.scrollIntoView({ behavior: "smooth", block: "start" });
+}
+
+function ambulanceEntryPayload() {
+  return {
+    title: qs("#ambulanceEntryTitle")?.value.trim() || "",
+    info: qs("#ambulanceEntryInfo")?.value.trim() || "",
+    photoUrl: cleanServiceMedia(qs("#ambulanceEntryPhotoUrl")?.value || ""),
+    phone: qs("#ambulanceEntryPhone")?.value.trim() || "",
+    whatsapp: qs("#ambulanceEntryWhatsapp")?.value.trim() || "",
+    sortOrder: Number(qs("#ambulanceEntrySortOrder")?.value || 99),
+    isActive: qs("#ambulanceEntryIsActive")?.checked !== false
+  };
+}
+
+function renderAmbulanceAdminList() {
+  const list = qs("#adminAmbulanceList");
+  if (!list) return;
+  const items = Array.isArray(state.ambulances) ? state.ambulances : [];
+  list.innerHTML = items.length ? items.sort((a,b)=>(Number(a.sortOrder)||99)-(Number(b.sortOrder)||99)).map((item)=>`
+    <article class="admin-list-item admin-service-item">
+      <div class="admin-service-summary">
+        ${serviceVisualMarkup(item.photoUrl || "🚑", item.title || "Ambulance", "service-admin-photo")}
+        <div><strong>${escapeHtml(item.title || "Custom Ambulance")}</strong><p>${escapeHtml(item.info || "No details added.")} • ${item.isActive === false ? "Hidden" : "Visible"}</p></div>
+      </div>
+      <div class="admin-list-actions"><button class="small-btn" data-ambulance-edit="${escapeHtml(item.id)}" type="button">Edit</button><button class="small-btn danger-small" data-ambulance-delete="${escapeHtml(item.id)}" type="button">Delete</button></div>
+    </article>`).join("") : `<div class="empty-state">No custom ambulances added yet.</div>`;
+}
+
+async function saveAmbulanceEntry(event) {
+  event.preventDefault();
+  const id = qs("#ambulanceEntryId")?.value || "";
+  const payload = ambulanceEntryPayload();
+  if (id) {
+    await api(`/api/ambulances/${encodeURIComponent(id)}`, { method: "PATCH", body: JSON.stringify(payload) });
+    toast("Ambulance updated.");
+  } else {
+    await api("/api/ambulances", { method: "POST", body: JSON.stringify(payload) });
+    toast("Ambulance added.");
+  }
+  resetAmbulanceEntryForm();
+  await loadAdminData();
+}
+
+async function deleteAmbulanceEntry(id) {
+  if (!window.confirm("Delete this ambulance card?")) return;
+  await api(`/api/ambulances/${encodeURIComponent(id)}`, { method: "DELETE" });
+  toast("Ambulance deleted.");
+  await loadAdminData();
+}
+
+function setHospitalPhotoPreview(value = "") {
+  const preview = qs("#hospitalPhotoPreview");
+  if (!preview) return;
+  const photo = cleanServiceMedia(value);
+  preview.classList.toggle("has-photo", Boolean(photo));
+  preview.innerHTML = photo ? `<img src="${escapeHtml(photo)}" alt="Hospital photo" loading="lazy" />` : "No hospital photo selected";
+}
+
+function getCurrentHospitalGalleryPhotos() {
+  return parsePhotoLines(qs("#hospitalGalleryPhotos")?.value || "").slice(0, 10);
+}
+
+function setCurrentHospitalGalleryPhotos(items = []) {
+  const photos = (Array.isArray(items) ? items : []).map((item) => cleanServiceMedia(item)).filter(Boolean).slice(0, 10);
+  if (qs("#hospitalGalleryPhotos")) qs("#hospitalGalleryPhotos").value = formatPhotoLines(photos);
+  setHospitalGalleryPreview(photos);
+}
+
+function setHospitalGalleryPreview(items = []) {
+  const preview = qs("#hospitalGalleryPreview");
+  if (!preview) return;
+  const photos = (Array.isArray(items) ? items : []).filter(Boolean);
+  preview.innerHTML = photos.length ? photos.map((photo)=>`<span class="mini-photo-thumb"><img src="${escapeHtml(photo)}" alt="Hospital gallery photo" loading="lazy" /></span>`).join("") : `<span class="form-help">No gallery photos selected</span>`;
+}
+
+function resetHospitalForm() {
+  ["hospitalId", "hospitalName", "hospitalPhotoUrl", "hospitalGalleryPhotos", "hospitalAddress", "hospitalPhone", "hospitalWhatsapp", "hospitalDescription", "hospitalServices"].forEach((id)=>{ const el=qs(`#${id}`); if(el) el.value=""; });
+  if (qs("#hospitalSortOrder")) qs("#hospitalSortOrder").value = "99";
+  if (qs("#hospitalIsActive")) qs("#hospitalIsActive").checked = true;
+  if (qs("#hospitalFormTitle")) qs("#hospitalFormTitle").textContent = "Add hospital";
+  const mainUpload = qs("#hospitalPhotoUpload"); if (mainUpload) mainUpload.value = "";
+  const galleryUpload = qs("#hospitalGalleryUpload"); if (galleryUpload) galleryUpload.value = "";
+  setHospitalPhotoPreview("");
+  setHospitalGalleryPreview([]);
+}
+
+function fillHospitalForm(item = {}) {
+  if (qs("#hospitalFormTitle")) qs("#hospitalFormTitle").textContent = `Edit ${item.name || "hospital"}`;
+  const values = {
+    hospitalId: item.id || "",
+    hospitalName: item.name || "",
+    hospitalPhotoUrl: item.photoUrl || "",
+    hospitalAddress: item.address || "",
+    hospitalPhone: item.phone || "",
+    hospitalWhatsapp: item.whatsapp || "",
+    hospitalDescription: item.description || "",
+    hospitalServices: item.services || "",
+    hospitalSortOrder: item.sortOrder ?? 99
+  };
+  Object.entries(values).forEach(([id,value])=>{ const el=qs(`#${id}`); if(el) el.value=value; });
+  if (qs("#hospitalIsActive")) qs("#hospitalIsActive").checked = item.isActive !== false;
+  setHospitalPhotoPreview(item.photoUrl || "");
+  setCurrentHospitalGalleryPhotos(item.galleryPhotos || []);
+  qs("#hospitalForm")?.scrollIntoView({ behavior: "smooth", block: "start" });
+}
+
+function hospitalPayload() {
+  return {
+    name: qs("#hospitalName")?.value.trim() || "",
+    photoUrl: cleanServiceMedia(qs("#hospitalPhotoUrl")?.value || ""),
+    galleryPhotos: getCurrentHospitalGalleryPhotos(),
+    address: qs("#hospitalAddress")?.value.trim() || "",
+    phone: qs("#hospitalPhone")?.value.trim() || "",
+    whatsapp: qs("#hospitalWhatsapp")?.value.trim() || "",
+    description: qs("#hospitalDescription")?.value.trim() || "",
+    services: qs("#hospitalServices")?.value.trim() || "",
+    sortOrder: Number(qs("#hospitalSortOrder")?.value || 99),
+    isActive: qs("#hospitalIsActive")?.checked !== false
+  };
+}
+
+function renderHospitalAdminList() {
+  const list = qs("#adminHospitalList");
+  if (!list) return;
+  const items = Array.isArray(state.hospitals) ? state.hospitals : [];
+  list.innerHTML = items.length ? items.sort((a,b)=>(Number(a.sortOrder)||99)-(Number(b.sortOrder)||99)).map((item)=>`
+    <article class="admin-list-item admin-service-item">
+      <div class="admin-service-summary">
+        ${serviceVisualMarkup(item.photoUrl || "🏥", item.name || "Hospital", "service-admin-photo")}
+        <div><strong>${escapeHtml(item.name || "Hospital")}</strong><p>${escapeHtml(item.address || item.phone || "No details added.")} • ${item.isActive === false ? "Hidden" : "Visible"}</p></div>
+      </div>
+      <div class="admin-list-actions"><button class="small-btn" data-hospital-edit="${escapeHtml(item.id)}" type="button">Edit</button><button class="small-btn danger-small" data-hospital-delete="${escapeHtml(item.id)}" type="button">Delete</button></div>
+    </article>`).join("") : `<div class="empty-state">No hospitals added yet.</div>`;
+}
+
+async function saveHospital(event) {
+  event.preventDefault();
+  const id = qs("#hospitalId")?.value || "";
+  const payload = hospitalPayload();
+  if (!payload.name) { toast("Add hospital name."); return; }
+  if (id) {
+    await api(`/api/hospitals/${encodeURIComponent(id)}`, { method: "PATCH", body: JSON.stringify(payload) });
+    toast("Hospital updated.");
+  } else {
+    await api("/api/hospitals", { method: "POST", body: JSON.stringify(payload) });
+    toast("Hospital added.");
+  }
+  resetHospitalForm();
+  await loadAdminData();
+}
+
+async function deleteHospital(id) {
+  if (!window.confirm("Delete this hospital profile?")) return;
+  await api(`/api/hospitals/${encodeURIComponent(id)}`, { method: "DELETE" });
+  toast("Hospital deleted.");
+  await loadAdminData();
+}
+
 function readFileAsAdminImage(file, maxWidth = 900) {
   return resizeImageFile(file, maxWidth, 0.78, "image/jpeg");
 }
@@ -2793,7 +3072,59 @@ function bindEvents() {
     }
   });
 
+  qs("#ambulanceEntryForm")?.addEventListener("submit", async (event) => {
+    try { await saveAmbulanceEntry(event); } catch (error) { toast(error.message || "Could not save ambulance card."); }
+  });
+  qs("#resetAmbulanceEntryForm")?.addEventListener("click", resetAmbulanceEntryForm);
+  const ambulanceEntryPhotoUpload = qs("#ambulanceEntryPhotoUpload");
+  ambulanceEntryPhotoUpload?.addEventListener("change", async () => {
+    const file = ambulanceEntryPhotoUpload.files?.[0];
+    if (!file) return;
+    try {
+      const dataUrl = await resizeImageFile(file);
+      qs("#ambulanceEntryPhotoUrl").value = dataUrl;
+      setAmbulancePhotoPreview(dataUrl);
+      toast("Ambulance photo uploaded.");
+    } catch (error) { toast(error.message || "Could not upload ambulance photo."); }
+    finally { ambulanceEntryPhotoUpload.value = ""; }
+  });
+  qs("#clearAmbulancePhotoButton")?.addEventListener("click", () => { qs("#ambulanceEntryPhotoUrl").value = ""; setAmbulancePhotoPreview(""); });
+  qs("#adminAmbulanceList")?.addEventListener("click", async (event) => {
+    const edit = event.target.closest("[data-ambulance-edit]");
+    const del = event.target.closest("[data-ambulance-delete]");
+    if (edit) { const item = state.ambulances.find((row) => String(row.id) === String(edit.dataset.ambulanceEdit)); if (item) fillAmbulanceEntryForm(item); }
+    if (del) { try { await deleteAmbulanceEntry(del.dataset.ambulanceDelete || ""); } catch (error) { toast(error.message || "Could not delete ambulance card."); } }
+  });
+
+  qs("#hospitalForm")?.addEventListener("submit", async (event) => {
+    try { await saveHospital(event); } catch (error) { toast(error.message || "Could not save hospital."); }
+  });
+  qs("#resetHospitalForm")?.addEventListener("click", resetHospitalForm);
+  const hospitalPhotoUpload = qs("#hospitalPhotoUpload");
+  hospitalPhotoUpload?.addEventListener("change", async () => {
+    const file = hospitalPhotoUpload.files?.[0]; if (!file) return;
+    try { const dataUrl = await resizeImageFile(file); qs("#hospitalPhotoUrl").value = dataUrl; setHospitalPhotoPreview(dataUrl); toast("Hospital photo uploaded."); }
+    catch (error) { toast(error.message || "Could not upload hospital photo."); }
+    finally { hospitalPhotoUpload.value = ""; }
+  });
+  qs("#clearHospitalPhotoButton")?.addEventListener("click", () => { qs("#hospitalPhotoUrl").value = ""; setHospitalPhotoPreview(""); });
+  const hospitalGalleryUpload = qs("#hospitalGalleryUpload");
+  hospitalGalleryUpload?.addEventListener("change", async () => {
+    const files = [...(hospitalGalleryUpload.files || [])].slice(0, 10); if (!files.length) return;
+    try { const existing = getCurrentHospitalGalleryPhotos(); const added = []; for (const file of files) added.push(await resizeImageFile(file)); setCurrentHospitalGalleryPhotos([...existing, ...added].slice(0, 10)); toast("Hospital gallery uploaded."); }
+    catch (error) { toast(error.message || "Could not upload hospital gallery."); }
+    finally { hospitalGalleryUpload.value = ""; }
+  });
+  qs("#clearHospitalGalleryButton")?.addEventListener("click", () => { setCurrentHospitalGalleryPhotos([]); if (hospitalGalleryUpload) hospitalGalleryUpload.value = ""; });
+  qs("#adminHospitalList")?.addEventListener("click", async (event) => {
+    const edit = event.target.closest("[data-hospital-edit]");
+    const del = event.target.closest("[data-hospital-delete]");
+    if (edit) { const item = state.hospitals.find((row) => String(row.id) === String(edit.dataset.hospitalEdit)); if (item) fillHospitalForm(item); }
+    if (del) { try { await deleteHospital(del.dataset.hospitalDelete || ""); } catch (error) { toast(error.message || "Could not delete hospital."); } }
+  });
+
   qs("#resetDoctorForm")?.addEventListener("click", resetDoctorForm);
+  qs("#designation")?.addEventListener("change", updateDesignationNoteVisibility);
   qs("#addChamberButton")?.addEventListener("click", () => addChamberRow({}, { focus: true }));
   qs("#chamberList")?.addEventListener("click", (event) => {
     const button = event.target.closest("[data-remove-chamber]");
@@ -2878,6 +3209,30 @@ function bindEvents() {
     if (servicePhotoUpload) servicePhotoUpload.value = "";
     setServicePhotoPreview("");
     toast("Service photo removed.");
+  });
+
+  const servicePhotoMultiUpload = qs("#servicePhotoMultiUpload");
+  if (servicePhotoMultiUpload) {
+    servicePhotoMultiUpload.addEventListener("change", async () => {
+      const files = [...(servicePhotoMultiUpload.files || [])].slice(0, 8);
+      if (!files.length) return;
+      try {
+        const existing = getCurrentServicePhotos();
+        const added = [];
+        for (const file of files) added.push(await resizeImageFile(file));
+        setCurrentServicePhotos([...existing, ...added].slice(0, 8));
+        toast("Service gallery photos uploaded.");
+      } catch (error) {
+        toast(error.message || "Could not upload service gallery photos.");
+      } finally {
+        servicePhotoMultiUpload.value = "";
+      }
+    });
+  }
+  qs("#clearServicePhotosButton")?.addEventListener("click", () => {
+    setCurrentServicePhotos([]);
+    if (servicePhotoMultiUpload) servicePhotoMultiUpload.value = "";
+    toast("Service gallery photos removed.");
   });
 
 
@@ -3145,6 +3500,11 @@ applyAdminPermissions();
 setPhotoPreview(qs("#photoUrl")?.value || "");
 renderChamberRows([]);
 setServicePhotoPreview(qs("#servicePhotoUrl")?.value || "");
+setServicePhotosPreview(getCurrentServicePhotos());
+setAmbulancePhotoPreview(qs("#ambulanceEntryPhotoUrl")?.value || "");
+setHospitalPhotoPreview(qs("#hospitalPhotoUrl")?.value || "");
+setHospitalGalleryPreview(getCurrentHospitalGalleryPhotos());
+updateDesignationNoteVisibility();
 setProductPhotoPreview(qs("#productPhotoUrl")?.value || "");
 setProductAdditionalPhotosPreview(getCurrentProductAdditionalPhotos());
 resetSubAdminForm();

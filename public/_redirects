@@ -10,6 +10,8 @@
 /su/doctors/ /su/index.html 200
 /su/ambulance /su/index.html 200
 /su/ambulance/ /su/index.html 200
+/su/hospitals /su/index.html 200
+/su/hospitals/ /su/index.html 200
 /su/blood /su/index.html 200
 /su/blood/ /su/index.html 200
 /su/services /su/index.html 200
@@ -41,6 +43,8 @@
 /superuser/doctors/ /superuser/index.html 200
 /superuser/ambulance /superuser/index.html 200
 /superuser/ambulance/ /superuser/index.html 200
+/superuser/hospitals /superuser/index.html 200
+/superuser/hospitals/ /superuser/index.html 200
 /superuser/blood /superuser/index.html 200
 /superuser/blood/ /superuser/index.html 200
 /superuser/services /superuser/index.html 200
@@ -108,6 +112,14 @@
 /signup /signup/index.html 200
 /signup/ /signup/index.html 200
 
+/hospital /Hospital 301
+/hospital/ /Hospital 301
+/Hospital /Hospital/index.html 200
+/Hospital/ /Hospital/index.html 200
+/Hospital/:slug /Hospital/index.html 200
+/Hospital/:slug/ /Hospital/index.html 200
+/hospital/:slug /Hospital/index.html 200
+/hospital/:slug/ /Hospital/index.html 200
 /ambulance /Ambulance 301
 /ambulance/ /Ambulance 301
 /Ambulance /Ambulance/index.html 200

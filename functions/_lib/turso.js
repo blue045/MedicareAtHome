@@ -48,6 +48,7 @@ export function rowToDoctor(row) {
     id: String(row.id),
     name: row.name || "",
     designation: row.designation || "",
+    designationNote: row.designationNote || "",
     specialty: row.specialty || "",
     degrees: row.degrees || "",
     experience: row.experience || "",
@@ -85,6 +86,41 @@ export function rowToBloodProfile(row) {
   };
 }
 
+export function rowToAmbulance(row) {
+  if (!row) return null;
+  return {
+    id: String(row.id),
+    title: row.title || "",
+    info: row.info || "",
+    photoUrl: row.photoUrl || "",
+    phone: row.phone || "",
+    whatsapp: row.whatsapp || "",
+    sortOrder: asNumber(row.sortOrder),
+    isActive: intToBool(row.isActive),
+    createdAt: row.createdAt || "",
+    updatedAt: row.updatedAt || ""
+  };
+}
+
+export function rowToHospital(row) {
+  if (!row) return null;
+  return {
+    id: String(row.id),
+    name: row.name || "",
+    photoUrl: row.photoUrl || "",
+    galleryPhotos: safeJsonParse(row.galleryPhotos, []),
+    address: row.address || "",
+    phone: row.phone || "",
+    whatsapp: row.whatsapp || "",
+    description: row.description || "",
+    services: row.services || "",
+    sortOrder: asNumber(row.sortOrder),
+    isActive: intToBool(row.isActive),
+    createdAt: row.createdAt || "",
+    updatedAt: row.updatedAt || ""
+  };
+}
+
 
 export function rowToSettings(row) {
   if (!row) return null;
@@ -103,6 +139,7 @@ export function rowToSettings(row) {
     navStoreLabel: row.navStoreLabel || "Store",
     navDoctorsLabel: row.navDoctorsLabel || "Doctors",
     navAmbulanceLabel: row.navAmbulanceLabel || "Ambulance",
+    navHospitalLabel: row.navHospitalLabel || "Hospital",
     navBloodLabel: row.navBloodLabel || "Blood",
     navHowItWorksLabel: row.navHowItWorksLabel || "About",
     navContactLabel: row.navContactLabel || "Contact",
@@ -114,6 +151,8 @@ export function rowToSettings(row) {
     doctorsPageCopy: row.doctorsPageCopy || "Tap a card to open the full doctor profile with phone, WhatsApp, services and availability.",
     ambulancePageTitle: row.ambulancePageTitle || "Need an ambulance?",
     ambulancePageCopy: row.ambulancePageCopy || "Call or message us for ambulance support. Share patient condition, pickup location and destination.",
+    hospitalPageTitle: row.hospitalPageTitle || "Nearby hospitals",
+    hospitalPageCopy: row.hospitalPageCopy || "Browse hospital information, photos, contact numbers and addresses.",
     ambulanceDescription: row.ambulanceDescription || "Fast ambulance contact support for Medicare At Home visitors. Use the call button for urgent help or WhatsApp to send pickup details.",
     ambulanceButtonText: row.ambulanceButtonText || "Order Ambulance",
     ambulancePhone: row.ambulancePhone || "+8801609672748",
@@ -139,6 +178,7 @@ export function rowToSettings(row) {
     whatsapp: row.whatsapp || "",
     serviceTags: safeJsonParse(row.serviceTags, []),
     serviceIcons: safeJsonParse(row.serviceIcons, {}),
+    servicePhotos: safeJsonParse(row.servicePhotos, {}),
     serviceDescriptions: safeJsonParse(row.serviceDescriptions, {}),
     emergencyNote: row.emergencyNote || "",
     stats: safeJsonParse(row.stats, []),
@@ -151,6 +191,7 @@ function doctorRecord(doctor) {
   return {
     name: doctor.name || "",
     designation: doctor.designation || "",
+    designationNote: doctor.designationNote || "",
     specialty: doctor.specialty || "",
     degrees: doctor.degrees || "",
     experience: doctor.experience || "",
@@ -186,6 +227,37 @@ function bloodProfileRecord(profile) {
   };
 }
 
+function ambulanceRecord(item = {}) {
+  return {
+    title: item.title || "",
+    info: item.info || "",
+    photoUrl: item.photoUrl || "",
+    phone: item.phone || "",
+    whatsapp: item.whatsapp || "",
+    sortOrder: asNumber(item.sortOrder),
+    isActive: boolToInt(item.isActive),
+    createdAt: toIsoText(item.createdAt),
+    updatedAt: toIsoText(item.updatedAt)
+  };
+}
+
+function hospitalRecord(item = {}) {
+  return {
+    name: item.name || "",
+    photoUrl: item.photoUrl || "",
+    galleryPhotos: JSON.stringify(item.galleryPhotos || []),
+    address: item.address || "",
+    phone: item.phone || "",
+    whatsapp: item.whatsapp || "",
+    description: item.description || "",
+    services: item.services || "",
+    sortOrder: asNumber(item.sortOrder),
+    isActive: boolToInt(item.isActive),
+    createdAt: toIsoText(item.createdAt),
+    updatedAt: toIsoText(item.updatedAt)
+  };
+}
+
 
 function settingsRecord(settings) {
   return {
@@ -202,6 +274,7 @@ function settingsRecord(settings) {
     navStoreLabel: settings.navStoreLabel || "Store",
     navDoctorsLabel: settings.navDoctorsLabel || "Doctors",
     navAmbulanceLabel: settings.navAmbulanceLabel || "Ambulance",
+    navHospitalLabel: settings.navHospitalLabel || "Hospital",
     navBloodLabel: settings.navBloodLabel || "Blood",
     navHowItWorksLabel: settings.navHowItWorksLabel || "About",
     navContactLabel: settings.navContactLabel || "Contact",
@@ -213,6 +286,8 @@ function settingsRecord(settings) {
     doctorsPageCopy: settings.doctorsPageCopy || "Tap a card to open the full doctor profile with phone, WhatsApp, services and availability.",
     ambulancePageTitle: settings.ambulancePageTitle || "Need an ambulance?",
     ambulancePageCopy: settings.ambulancePageCopy || "Call or message us for ambulance support. Share patient condition, pickup location and destination.",
+    hospitalPageTitle: settings.hospitalPageTitle || "Nearby hospitals",
+    hospitalPageCopy: settings.hospitalPageCopy || "Browse hospital information, photos, contact numbers and addresses.",
     ambulanceDescription: settings.ambulanceDescription || "Fast ambulance contact support for Medicare At Home visitors. Use the call button for urgent help or WhatsApp to send pickup details.",
     ambulanceButtonText: settings.ambulanceButtonText || "Order Ambulance",
     ambulancePhone: settings.ambulancePhone || "+8801609672748",
@@ -238,6 +313,7 @@ function settingsRecord(settings) {
     whatsapp: settings.whatsapp || "",
     serviceTags: JSON.stringify(settings.serviceTags || []),
     serviceIcons: JSON.stringify(settings.serviceIcons || {}),
+    servicePhotos: JSON.stringify(settings.servicePhotos || {}),
     serviceDescriptions: JSON.stringify(settings.serviceDescriptions || {}),
     emergencyNote: settings.emergencyNote || "",
     stats: JSON.stringify(settings.stats || []),
@@ -347,6 +423,66 @@ export async function deleteBloodProfile(db, id) {
     sql: "DELETE FROM blood_profiles WHERE id = ?",
     args: [id]
   });
+  return Number(result.rowsAffected || 0);
+}
+
+export async function listAmbulances(db, includeInactive = false) {
+  const result = await db.execute({
+    sql: includeInactive
+      ? "SELECT * FROM ambulances ORDER BY sortOrder ASC, createdAt DESC LIMIT 100"
+      : "SELECT * FROM ambulances WHERE isActive != 0 ORDER BY sortOrder ASC, createdAt DESC LIMIT 100",
+    args: []
+  });
+  return result.rows.map(rowToAmbulance);
+}
+
+export async function getAmbulanceById(db, id) {
+  const result = await db.execute({ sql: "SELECT * FROM ambulances WHERE id = ? LIMIT 1", args: [id] });
+  return rowToAmbulance(result.rows[0]);
+}
+
+export async function createAmbulance(db, item) {
+  const id = await insertRecord(db, "ambulances", ambulanceRecord(item));
+  return getAmbulanceById(db, id);
+}
+
+export async function updateAmbulance(db, id, item) {
+  await updateRecord(db, "ambulances", id, ambulanceRecord({ ...item, updatedAt: new Date() }));
+  return getAmbulanceById(db, id);
+}
+
+export async function deleteAmbulance(db, id) {
+  const result = await db.execute({ sql: "DELETE FROM ambulances WHERE id = ?", args: [id] });
+  return Number(result.rowsAffected || 0);
+}
+
+export async function listHospitals(db, includeInactive = false) {
+  const result = await db.execute({
+    sql: includeInactive
+      ? "SELECT * FROM hospitals ORDER BY sortOrder ASC, createdAt DESC LIMIT 200"
+      : "SELECT * FROM hospitals WHERE isActive != 0 ORDER BY sortOrder ASC, createdAt DESC LIMIT 200",
+    args: []
+  });
+  return result.rows.map(rowToHospital);
+}
+
+export async function getHospitalById(db, id) {
+  const result = await db.execute({ sql: "SELECT * FROM hospitals WHERE id = ? LIMIT 1", args: [id] });
+  return rowToHospital(result.rows[0]);
+}
+
+export async function createHospital(db, item) {
+  const id = await insertRecord(db, "hospitals", hospitalRecord(item));
+  return getHospitalById(db, id);
+}
+
+export async function updateHospital(db, id, item) {
+  await updateRecord(db, "hospitals", id, hospitalRecord({ ...item, updatedAt: new Date() }));
+  return getHospitalById(db, id);
+}
+
+export async function deleteHospital(db, id) {
+  const result = await db.execute({ sql: "DELETE FROM hospitals WHERE id = ?", args: [id] });
   return Number(result.rowsAffected || 0);
 }
 

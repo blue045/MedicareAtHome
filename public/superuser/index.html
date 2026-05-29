@@ -80,6 +80,7 @@
             <a class="sidebar-link" href="/superuser/reviews" data-admin-nav="comments" data-permission="comments"><span>💬</span>User Reviews</a>
             <a class="sidebar-link" href="/superuser/doctors" data-admin-nav="doctors" data-permission="doctors"><span>☤</span>Doctors</a>
             <a class="sidebar-link" href="/superuser/ambulance" data-admin-nav="ambulance" data-permission="ambulance"><span>🚑</span>Ambulance</a>
+            <a class="sidebar-link" href="/superuser/hospitals" data-admin-nav="hospitals" data-permission="hospitals"><span>🏥</span>Hospitals</a>
             <a class="sidebar-link" href="/superuser/blood" data-admin-nav="blood" data-permission="blood"><span>🩸</span>Blood</a>
             <a class="sidebar-link" href="/superuser/content" data-admin-nav="content" data-permission="content"><span>✎</span>Content Pages</a>
             <a class="sidebar-link" href="/superuser/about" data-admin-nav="about" data-permission="content"><span>★</span>About & Blog</a>
@@ -126,6 +127,7 @@
                   <a class="btn btn-ghost" href="/superuser/reviews" data-admin-nav="comments" data-permission="comments">User Reviews</a>
                   <a class="btn btn-ghost" href="/superuser/doctors" data-admin-nav="doctors" data-permission="doctors">Manage Doctors</a>
                   <a class="btn btn-ghost" href="/superuser/ambulance" data-admin-nav="ambulance" data-permission="ambulance">Ambulance</a>
+                  <a class="btn btn-ghost" href="/superuser/hospitals" data-admin-nav="hospitals" data-permission="hospitals">Hospitals</a>
                   <a class="btn btn-ghost" href="/superuser/blood" data-admin-nav="blood" data-permission="blood">Blood Approval</a>
                   <a class="btn btn-ghost" href="/superuser/content" data-admin-nav="content" data-permission="content">Content Pages</a>
                   <a class="btn btn-ghost" href="/superuser/contact" data-admin-nav="contact" data-permission="contact">Contact Settings</a>
@@ -201,6 +203,7 @@
                 <div class="form-group"><label for="navStoreLabel">Store Nav Label</label><input class="form-input" id="navStoreLabel" placeholder="Store" /></div>
                 <div class="form-group"><label for="navDoctorsLabel">Doctors Nav Label</label><input class="form-input" id="navDoctorsLabel" placeholder="Doctors" /></div>
                 <div class="form-group"><label for="navAmbulanceLabel">Ambulance Nav Label</label><input class="form-input" id="navAmbulanceLabel" placeholder="Ambulance" /></div>
+                <div class="form-group"><label for="navHospitalLabel">Hospital Nav Label</label><input class="form-input" id="navHospitalLabel" placeholder="Hospital" /></div>
                 <div class="form-group"><label for="navBloodLabel">Blood Nav Label</label><input class="form-input" id="navBloodLabel" placeholder="Blood" /></div>
                 <div class="form-group"><label for="navHowItWorksLabel">About Nav Label</label><input class="form-input" id="navHowItWorksLabel" placeholder="About" /></div>
                 <div class="form-group"><label for="navContactLabel">Contact Nav Label</label><input class="form-input" id="navContactLabel" placeholder="Contact" /></div>
@@ -213,6 +216,8 @@
                 <div class="form-group"><label for="doctorsPageCopy">Doctors Page Description</label><textarea class="form-textarea" id="doctorsPageCopy"></textarea></div>
                 <div class="form-group"><label for="ambulancePageTitle">Ambulance Page Title</label><input class="form-input" id="ambulancePageTitle" /></div>
                 <div class="form-group"><label for="ambulancePageCopy">Ambulance Page Description</label><textarea class="form-textarea" id="ambulancePageCopy"></textarea></div>
+                <div class="form-group"><label for="hospitalPageTitle">Hospital Page Title</label><input class="form-input" id="hospitalPageTitle" /></div>
+                <div class="form-group"><label for="hospitalPageCopy">Hospital Page Description</label><textarea class="form-textarea" id="hospitalPageCopy"></textarea></div>
                 <div class="form-group"><label for="bloodPageTitle">Blood Page Title</label><input class="form-input" id="bloodPageTitle" /></div>
                 <div class="form-group"><label for="bloodPageCopy">Blood Page Description</label><textarea class="form-textarea" id="bloodPageCopy"></textarea></div>
                 <div class="form-group"><label for="howPageTitle">About Page Title</label><input class="form-input" id="howPageTitle" /></div>
@@ -253,6 +258,12 @@
                       <option value="Assistant Professor">Assistant Professor</option>
                       <option value="Consultant">Consultant</option>
                     </select>
+                  </div>
+
+                  <div class="form-group" id="designationNoteGroup" hidden>
+                    <label for="designationNote">Designation Extra Text</label>
+                    <input class="form-input" id="designationNote" placeholder="Example: Child Specialist" />
+                    <small class="form-help">Optional. It shows beside the designation like: Consultant (Child Specialist).</small>
                   </div>
 
                   <div class="form-group">
@@ -340,33 +351,67 @@
           </section>
 
           <section class="admin-page" data-admin-page="ambulance">
-            <section class="admin-card">
-              <p class="section-kicker">Ambulance</p>
-              <h2>Edit ambulance feature</h2>
-              <p class="section-copy">These details control the public Ambulance page, call button, WhatsApp button, and default ambulance contact number.</p>
-              <form id="ambulanceSettingsForm" class="form-grid">
-                <div class="form-group">
-                  <label for="ambulanceButtonText">Button Text</label>
-                  <input class="form-input" id="ambulanceButtonText" placeholder="Order Ambulance" />
-                </div>
-                <div class="form-group">
-                  <label for="ambulancePhone">Ambulance Call Number</label>
-                  <input class="form-input" id="ambulancePhone" placeholder="+8801609672748" />
-                </div>
-                <div class="form-group">
-                  <label for="ambulanceWhatsapp">Ambulance WhatsApp Number</label>
-                  <input class="form-input" id="ambulanceWhatsapp" placeholder="+8801609672748" />
-                </div>
-                <div class="form-group full">
-                  <label for="ambulanceDescription">Ambulance Description</label>
-                  <textarea class="form-textarea" id="ambulanceDescription" placeholder="Write the ambulance service details shown on the page."></textarea>
-                </div>
-                <div class="form-actions full">
-                  <button class="btn btn-primary" type="submit">Save Ambulance Settings</button>
-                  <a class="btn btn-ghost" href="/Ambulance" target="_blank" rel="noopener noreferrer">View Ambulance Page</a>
-                </div>
-              </form>
-            </section>
+            <div class="admin-grid services-admin-grid">
+              <section class="admin-card">
+                <p class="section-kicker">Ambulance</p>
+                <h2>Edit ambulance feature</h2>
+                <p class="section-copy">These details control the public Ambulance page, call button, WhatsApp button, and default ambulance contact number.</p>
+                <form id="ambulanceSettingsForm" class="form-grid">
+                  <div class="form-group"><label for="ambulanceButtonText">Button Text</label><input class="form-input" id="ambulanceButtonText" placeholder="Order Ambulance" /></div>
+                  <div class="form-group"><label for="ambulancePhone">Ambulance Call Number</label><input class="form-input" id="ambulancePhone" placeholder="+8801609672748" /></div>
+                  <div class="form-group"><label for="ambulanceWhatsapp">Ambulance WhatsApp Number</label><input class="form-input" id="ambulanceWhatsapp" placeholder="+8801609672748" /></div>
+                  <div class="form-group full"><label for="ambulanceDescription">Ambulance Description</label><textarea class="form-textarea" id="ambulanceDescription" placeholder="Write the ambulance service details shown on the page."></textarea></div>
+                  <div class="form-actions full"><button class="btn btn-primary" type="submit">Save Ambulance Settings</button><a class="btn btn-ghost" href="/Ambulance" target="_blank" rel="noopener noreferrer">View Ambulance Page</a></div>
+                </form>
+              </section>
+
+              <section class="admin-card">
+                <p class="section-kicker">Custom Ambulances</p>
+                <h2 id="ambulanceEntryFormTitle">Add custom ambulance</h2>
+                <p class="section-copy">All fields are optional. Add any text and photo you want to show as an ambulance card.</p>
+                <form id="ambulanceEntryForm" class="form-grid">
+                  <input type="hidden" id="ambulanceEntryId" />
+                  <div class="form-group full"><label for="ambulanceEntryTitle">Title</label><input class="form-input" id="ambulanceEntryTitle" placeholder="Example: ICU Ambulance" /></div>
+                  <div class="form-group full"><label for="ambulanceEntryInfo">Information</label><textarea class="form-textarea" id="ambulanceEntryInfo" placeholder="Write ambulance details, area, notes, or price info."></textarea></div>
+                  <div class="form-group"><label for="ambulanceEntryPhone">Phone</label><input class="form-input" id="ambulanceEntryPhone" placeholder="01XXXXXXXXX" /></div>
+                  <div class="form-group"><label for="ambulanceEntryWhatsapp">WhatsApp</label><input class="form-input" id="ambulanceEntryWhatsapp" placeholder="01XXXXXXXXX" /></div>
+                  <div class="form-group"><label for="ambulanceEntrySortOrder">Sort Order</label><input class="form-input" id="ambulanceEntrySortOrder" type="number" min="0" placeholder="99" /></div>
+                  <div class="form-group full"><label for="ambulanceEntryPhotoUpload">Photo</label><div class="photo-upload-box"><input class="form-input" id="ambulanceEntryPhotoUpload" type="file" accept="image/jpeg,image/png,image/webp" /><input id="ambulanceEntryPhotoUrl" type="hidden" /><div class="photo-preview" id="ambulancePhotoPreview">No ambulance photo selected</div><button class="small-btn" id="clearAmbulancePhotoButton" type="button">Remove Photo</button></div></div>
+                  <label class="check-row full"><input id="ambulanceEntryIsActive" type="checkbox" checked /> Show on website</label>
+                  <div class="form-actions full"><button class="btn btn-primary" type="submit">Save Ambulance Card</button><button class="btn btn-ghost" id="resetAmbulanceEntryForm" type="button">Reset</button></div>
+                </form>
+              </section>
+
+              <section class="admin-card service-list-card full-admin-card">
+                <div class="section-head compact-head"><div><p class="section-kicker">Ambulance Cards</p><h2 class="section-title">Manage custom ambulances</h2></div></div>
+                <div class="admin-list" id="adminAmbulanceList"><div class="loading-state">Loading ambulance cards...</div></div>
+              </section>
+            </div>
+          </section>
+
+          <section class="admin-page" data-admin-page="hospitals">
+            <div class="admin-grid services-admin-grid">
+              <section class="admin-card">
+                <p class="section-kicker">Hospitals</p>
+                <h2 id="hospitalFormTitle">Add hospital</h2>
+                <p class="section-copy">Hospital cards show name and one photo. The detail page shows full information and gallery photos.</p>
+                <form id="hospitalForm" class="form-grid">
+                  <input type="hidden" id="hospitalId" />
+                  <div class="form-group full"><label for="hospitalName">Hospital Name *</label><input class="form-input" id="hospitalName" required placeholder="Example: Feni General Hospital" /></div>
+                  <div class="form-group"><label for="hospitalPhone">Phone</label><input class="form-input" id="hospitalPhone" placeholder="01XXXXXXXXX" /></div>
+                  <div class="form-group"><label for="hospitalWhatsapp">WhatsApp</label><input class="form-input" id="hospitalWhatsapp" placeholder="01XXXXXXXXX" /></div>
+                  <div class="form-group"><label for="hospitalSortOrder">Sort Order</label><input class="form-input" id="hospitalSortOrder" type="number" min="0" placeholder="99" /></div>
+                  <div class="form-group full"><label for="hospitalAddress">Address</label><input class="form-input" id="hospitalAddress" placeholder="Hospital address" /></div>
+                  <div class="form-group full"><label for="hospitalDescription">Description</label><textarea class="form-textarea" id="hospitalDescription" placeholder="Write hospital details."></textarea></div>
+                  <div class="form-group full"><label for="hospitalServices">Services / Notes</label><textarea class="form-textarea" id="hospitalServices" placeholder="Available departments, emergency, ambulance, visiting hours, etc."></textarea></div>
+                  <div class="form-group full"><label for="hospitalPhotoUpload">Main Photo</label><div class="photo-upload-box"><input class="form-input" id="hospitalPhotoUpload" type="file" accept="image/jpeg,image/png,image/webp" /><input id="hospitalPhotoUrl" type="hidden" /><div class="photo-preview" id="hospitalPhotoPreview">No hospital photo selected</div><button class="small-btn" id="clearHospitalPhotoButton" type="button">Remove Photo</button></div></div>
+                  <div class="form-group full"><label for="hospitalGalleryUpload">Gallery Photos</label><div class="photo-upload-box"><input class="form-input" id="hospitalGalleryUpload" type="file" accept="image/jpeg,image/png,image/webp" multiple /><textarea id="hospitalGalleryPhotos" hidden></textarea><div class="mini-photo-grid" id="hospitalGalleryPreview"><span class="form-help">No gallery photos selected</span></div><button class="small-btn" id="clearHospitalGalleryButton" type="button">Remove Gallery Photos</button></div></div>
+                  <label class="check-row full"><input id="hospitalIsActive" type="checkbox" checked /> Show on website</label>
+                  <div class="form-actions full"><button class="btn btn-primary" type="submit">Save Hospital</button><button class="btn btn-ghost" id="resetHospitalForm" type="button">Reset</button><a class="btn btn-ghost" href="/Hospital" target="_blank" rel="noopener noreferrer">View Hospital Page</a></div>
+                </form>
+              </section>
+              <section class="admin-card service-list-card"><div class="section-head compact-head"><div><p class="section-kicker">Hospital List</p><h2 class="section-title">Manage hospitals</h2></div></div><div class="admin-list" id="adminHospitalList"><div class="loading-state">Loading hospitals...</div></div></section>
+            </div>
           </section>
 
           <section class="admin-page" data-admin-page="blood">
@@ -425,6 +470,16 @@
                       <button class="small-btn" id="clearServicePhotoButton" type="button">Remove Photo</button>
                     </div>
                     <small class="form-help">Upload JPG, PNG, or WEBP. The image is compressed in the browser and saved with the service.</small>
+                  </div>
+                  <div class="form-group full">
+                    <label for="servicePhotoMultiUpload">Service Gallery Photos</label>
+                    <div class="photo-upload-box service-photo-upload-box">
+                      <input class="form-input" id="servicePhotoMultiUpload" type="file" accept="image/jpeg,image/png,image/webp" multiple />
+                      <textarea id="servicePhotos" hidden></textarea>
+                      <div class="mini-photo-grid" id="servicePhotosPreview"><span class="form-help">No gallery photos selected</span></div>
+                      <button class="small-btn" id="clearServicePhotosButton" type="button">Remove Gallery Photos</button>
+                    </div>
+                    <small class="form-help">Optional. These photos appear on the service detail page.</small>
                   </div>
                   <div class="form-group full">
                     <label for="serviceDescription">Service Description *</label>
@@ -508,10 +563,12 @@
           <section class="admin-page" data-admin-page="orders">
             <div class="admin-grid services-admin-grid">
               <section class="admin-card">
-                <div class="section-head compact-head"><div><p class="section-kicker">bKash and Nagad</p><h2 class="section-title">Payment numbers</h2><p class="section-copy">Set the bKash/Nagad numbers shown during checkout. Cash on Delivery stays available automatically.</p></div></div>
+                <div class="section-head compact-head"><div><p class="section-kicker">Manual Payments</p><h2 class="section-title">Payment methods</h2><p class="section-copy">Set bKash, Nagad, Rocket, and Bangladeshi bank transfer details shown during checkout. Cash on Delivery stays available automatically.</p></div></div>
                 <form id="storePaymentSettingsForm" class="form-grid">
                   <div class="form-group"><label for="storeBkashNumber">bKash Number</label><input class="form-input" id="storeBkashNumber" placeholder="01XXXXXXXXX" /></div>
                   <div class="form-group"><label for="storeNagadNumber">Nagad Number</label><input class="form-input" id="storeNagadNumber" placeholder="01XXXXXXXXX" /></div>
+                  <div class="form-group"><label for="storeRocketNumber">Rocket Number</label><input class="form-input" id="storeRocketNumber" placeholder="01XXXXXXXXX" /></div>
+                  <div class="form-group full"><label for="storeBankTransferInfo">Bangladeshi Bank Transfer Info</label><textarea class="form-textarea" id="storeBankTransferInfo" placeholder="Bank name, account name, account number, branch/routing number."></textarea></div>
                   <div class="form-group full"><label for="storePaymentInstructions">Payment Instructions</label><textarea class="form-textarea" id="storePaymentInstructions" placeholder="Send payment first, then enter sender number and Transaction ID."></textarea></div>
                   <div class="form-actions full"><button class="btn btn-primary" type="submit">Save Payment Settings</button></div>
                 </form>

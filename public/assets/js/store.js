@@ -12,6 +12,8 @@ const storeState = {
   paymentSettings: {
     bkashNumber: "",
     nagadNumber: "",
+    rocketNumber: "",
+    bankTransferInfo: "",
     instructions: "Send payment through bKash and Nagad first, then enter your sender number and Transaction ID. For Cash on Delivery, customers must pay the delivery fee first by bKash or Nagad; the product price is paid on delivery."
   },
   selectedProduct: null,
@@ -291,25 +293,54 @@ function currentCheckoutDeliveryLabel() {
 
 function paymentMethodLabel(method = "") {
   if (["bkash", "nagad", "bkash_nagad"].includes(method)) return "bKash and Nagad";
+  if (method === "rocket") return "Rocket";
+  if (method === "bank_transfer") return "Bangladeshi Bank Transfer";
   return "Cash on Delivery";
 }
 
 function paymentChannelLabel(method = "") {
   if (method === "bkash") return "bKash";
   if (method === "nagad") return "Nagad";
+  if (method === "rocket") return "Rocket";
+  if (method === "bank_transfer") return "Bangladeshi Bank Transfer";
   return "bKash/Nagad";
+}
+
+function manualPaymentReady(method = "") {
+  if (method === "bkash") return Boolean(storeState.paymentSettings.bkashNumber);
+  if (method === "nagad") return Boolean(storeState.paymentSettings.nagadNumber);
+  if (method === "rocket") return Boolean(storeState.paymentSettings.rocketNumber);
+  if (method === "bank_transfer") return Boolean(storeState.paymentSettings.bankTransferInfo);
+  if (method === "bkash_nagad") return Boolean(storeState.paymentSettings.bkashNumber || storeState.paymentSettings.nagadNumber);
+  return false;
+}
+
+function firstReadyManualMethod() {
+  return ["bkash", "nagad", "rocket", "bank_transfer"].find((method) => manualPaymentReady(method)) || "";
+}
+
+function paymentDestinationForMethod(method = "") {
+  if (method === "bkash") return storeState.paymentSettings.bkashNumber ? `bKash: <b>${escapeHtml(storeState.paymentSettings.bkashNumber)}</b>` : "bKash number not configured yet";
+  if (method === "nagad") return storeState.paymentSettings.nagadNumber ? `Nagad: <b>${escapeHtml(storeState.paymentSettings.nagadNumber)}</b>` : "Nagad number not configured yet";
+  if (method === "rocket") return storeState.paymentSettings.rocketNumber ? `Rocket: <b>${escapeHtml(storeState.paymentSettings.rocketNumber)}</b>` : "Rocket number not configured yet";
+  if (method === "bank_transfer") return storeState.paymentSettings.bankTransferInfo ? escapeHtml(storeState.paymentSettings.bankTransferInfo).replaceAll("\n", "<br />") : "Bank transfer details not configured yet";
+  return paymentDestinationHtml();
 }
 
 function paymentDestinationHtml() {
   const parts = [];
   if (storeState.paymentSettings.bkashNumber) parts.push(`bKash: <b>${escapeHtml(storeState.paymentSettings.bkashNumber)}</b>`);
   if (storeState.paymentSettings.nagadNumber) parts.push(`Nagad: <b>${escapeHtml(storeState.paymentSettings.nagadNumber)}</b>`);
+  if (storeState.paymentSettings.rocketNumber) parts.push(`Rocket: <b>${escapeHtml(storeState.paymentSettings.rocketNumber)}</b>`);
+  if (storeState.paymentSettings.bankTransferInfo) parts.push(`Bank Transfer:<br />${escapeHtml(storeState.paymentSettings.bankTransferInfo).replaceAll("\n", "<br />")}`);
   return parts.length ? parts.join("<br />") : "Payment number not configured yet";
 }
 
 function deliveryPaymentLabel(method = "") {
   if (method === "bkash") return "bKash delivery fee paid";
   if (method === "nagad") return "Nagad delivery fee paid";
+  if (method === "rocket") return "Rocket delivery fee paid";
+  if (method === "bank_transfer") return "Bank transfer delivery fee paid";
   return "Delivery fee payment";
 }
 
@@ -733,11 +764,11 @@ function ensureCheckoutModal() {
         <div class="form-group full"><label for="checkoutAddress">Full Address</label><textarea class="form-textarea" id="checkoutAddress" required></textarea><button class="small-btn location-auto-button" type="button" data-use-current-location data-location-target="#checkoutAddress" data-location-short-target="#checkoutDeliveryLocation">Use my current location</button><small class="form-help">Tap to auto-fill your delivery address and area. If permission is denied, allow Location from browser site settings or type manually.</small></div>
         <div class="form-group"><label for="checkoutPhone">Phone Number</label><input class="form-input" id="checkoutPhone" required /></div>
         <div class="form-group"><label for="checkoutQuantity">Quantity</label><input class="form-input" id="checkoutQuantity" type="number" min="1" value="1" required /></div>
-        <div class="form-group full"><label for="checkoutPaymentMethod">Payment Method</label><select class="form-input" id="checkoutPaymentMethod"><option value="cod">Cash on Delivery</option><option value="bkash_nagad">bKash and Nagad</option></select></div>
-        <div class="form-group cod-delivery-payment-field full"><label for="checkoutDeliveryPaymentMethod">Pay Delivery Fee With</label><select class="form-input" id="checkoutDeliveryPaymentMethod"><option value="bkash">bKash delivery fee</option><option value="nagad">Nagad delivery fee</option></select></div>
+        <div class="form-group full"><label for="checkoutPaymentMethod">Payment Method</label><select class="form-input" id="checkoutPaymentMethod"><option value="cod">Cash on Delivery</option><option value="bkash_nagad">bKash and Nagad</option><option value="rocket">Rocket</option><option value="bank_transfer">Bangladeshi Bank Transfer</option></select></div>
+        <div class="form-group cod-delivery-payment-field full"><label for="checkoutDeliveryPaymentMethod">Pay Delivery Fee With</label><select class="form-input" id="checkoutDeliveryPaymentMethod"><option value="bkash">bKash delivery fee</option><option value="nagad">Nagad delivery fee</option><option value="rocket">Rocket delivery fee</option><option value="bank_transfer">Bank transfer delivery fee</option></select></div>
         <div class="payment-instruction-card full" id="manualPaymentInstruction"></div>
         <div class="form-group manual-payment-field"><label for="checkoutSenderNumber">Sender Number</label><input class="form-input" id="checkoutSenderNumber" placeholder="Number used to send money" /></div>
-        <div class="form-group manual-payment-field"><label for="checkoutTransactionId">Transaction ID</label><input class="form-input" id="checkoutTransactionId" placeholder="bKash/Nagad transaction ID" /></div>
+        <div class="form-group manual-payment-field"><label for="checkoutTransactionId">Transaction ID</label><input class="form-input" id="checkoutTransactionId" placeholder="Transaction ID / reference" /></div>
         <button class="btn btn-primary btn-block full" type="submit">Place Order</button>
       </form>
     </section>
@@ -916,11 +947,20 @@ function readPrescriptionFile(file) {
   return Promise.reject(new Error("Upload a prescription image or PDF."));
 }
 
+function addPrescriptionMedicineRow(value = "") {
+  const list = qs("#prescriptionMedicineList");
+  if (!list) return;
+  const row = document.createElement("div");
+  row.className = "medicine-name-row";
+  row.innerHTML = `<input class="form-input" data-prescription-medicine-name placeholder="Another medicine name" value="${escapeHtml(value)}" /><button class="small-btn danger-small" type="button" data-remove-prescription-medicine aria-label="Remove medicine">Remove</button>`;
+  list.appendChild(row);
+}
+
 function updatePrescriptionQuantityVisibility() {
-  const medicineInput = qs("#prescriptionMedicineName");
+  const medicineInputs = qsa("[data-prescription-medicine-name]");
   const quantityGroup = qs("#prescriptionQuantityGroup");
-  if (!medicineInput || !quantityGroup) return;
-  const hasMedicine = Boolean(medicineInput.value.trim());
+  if (!medicineInputs.length || !quantityGroup) return;
+  const hasMedicine = medicineInputs.some((input) => input.value.trim());
   quantityGroup.hidden = !hasMedicine;
   qs("#prescriptionQuantity")?.toggleAttribute("required", hasMedicine);
 }
@@ -946,14 +986,17 @@ function renderPrescriptionOrderPage() {
       <article class="product-detail-card prescription-order-card">
         <p class="section-kicker">Prescribed Medicine</p>
         <h2>Request custom medicine</h2>
-        <p class="section-copy">Type the medicine name manually, upload a prescription, or provide prescription instructions. After admin confirms the price, you can choose Cash on Delivery or bKash/Nagad from your Order Status page.</p>
+        <p class="section-copy">Type the medicine name manually, upload a prescription, or provide prescription instructions. After admin confirms the price, you can choose Cash on Delivery, bKash/Nagad, Rocket, or Bangladeshi bank transfer from your Order Status page.</p>
         <form id="prescriptionOrderForm" class="form-grid">
           <div class="form-group full"><label for="prescriptionFullName">Full Name</label><input class="form-input" id="prescriptionFullName" required value="${escapeHtml(storeState.user?.fullName || "")}" /></div>
           <div class="form-group"><label for="prescriptionPhone">Phone Number</label><input class="form-input" id="prescriptionPhone" required value="${escapeHtml(storeState.user?.phone || "")}" /></div>
           <div class="form-group"><label for="prescriptionDeliveryLocation">Delivery Location</label><input class="form-input" id="prescriptionDeliveryLocation" placeholder="Feni or your city/area" /></div>
           <div class="form-group full"><label for="prescriptionAddress">Full Address</label><textarea class="form-textarea" id="prescriptionAddress" required placeholder="House, road, area, city"></textarea><button class="small-btn location-auto-button" type="button" data-use-current-location data-location-target="#prescriptionAddress" data-location-short-target="#prescriptionDeliveryLocation">Use my current location</button><small class="form-help">Tap to auto-fill your delivery address, or type it manually.</small></div>
           <div class="form-group prescription-medicine-row full">
-            <div><label for="prescriptionMedicineName">Medicine Name</label><input class="form-input" id="prescriptionMedicineName" placeholder="Example: Napa Extra 500mg" /></div>
+            <div class="medicine-name-list" id="prescriptionMedicineList">
+              <label>Medicine Name</label>
+              <div class="medicine-name-row"><input class="form-input" data-prescription-medicine-name placeholder="Example: Napa Extra 500mg" /><button class="small-btn medicine-add-button" type="button" data-add-prescription-medicine aria-label="Add another medicine">+</button></div>
+            </div>
             <div id="prescriptionQuantityGroup" hidden><label for="prescriptionQuantity">Quantity</label><select class="form-input" id="prescriptionQuantity">${prescriptionQuantityOptions()}</select></div>
           </div>
           <div class="form-group full"><label for="prescriptionUpload">Upload Prescription</label><input class="form-input" id="prescriptionUpload" type="file" accept="image/jpeg,image/png,image/webp,application/pdf" /><input id="prescriptionFileUrl" type="hidden" /><small class="form-help" id="prescriptionFileStatus">Optional. JPG, PNG, WEBP, or PDF supported.</small></div>
@@ -964,7 +1007,7 @@ function renderPrescriptionOrderPage() {
       <aside class="admin-card checkout-help-card">
         <p class="section-kicker">Custom order flow</p>
         <h2>Price first, payment after</h2>
-        <p class="section-copy">Prescribed medicine orders do not show instant pricing. Admin sets the medicine price and delivery charge first, then you can pay like the other store orders: Cash on Delivery with delivery fee paid first, or full bKash/Nagad payment.</p>
+        <p class="section-copy">Prescribed medicine orders do not show instant pricing. Admin sets the medicine price and delivery charge first, then you can pay like the other store orders: Cash on Delivery with delivery fee paid first, or full payment by bKash/Nagad, Rocket, or Bangladeshi bank transfer.</p>
       </aside>
     </div>`;
   updatePrescriptionQuantityVisibility();
@@ -980,7 +1023,8 @@ async function placePrescriptionOrder(event) {
       phone: qs("#prescriptionPhone")?.value.trim() || "",
       deliveryLocation: qs("#prescriptionDeliveryLocation")?.value.trim() || "",
       address: qs("#prescriptionAddress")?.value.trim() || "",
-      medicineName: qs("#prescriptionMedicineName")?.value.trim() || "",
+      medicineNames: qsa("[data-prescription-medicine-name]").map((input) => input.value.trim()).filter(Boolean),
+      medicineName: qsa("[data-prescription-medicine-name]").map((input) => input.value.trim()).filter(Boolean).join(", "),
       quantity: Number(qs("#prescriptionQuantity")?.value || 1),
       prescriptionText: qs("#prescriptionText")?.value.trim() || "",
       prescriptionFileUrl: qs("#prescriptionFileUrl")?.value || ""
@@ -1362,12 +1406,30 @@ async function requireLoginForStoreAction() {
   return false;
 }
 
+
+function showFloatingCartButton(productId = "") {
+  if (!productId) return;
+  let button = qs("#floatingCartCheckoutButton");
+  if (!button) {
+    button = document.createElement("button");
+    button.id = "floatingCartCheckoutButton";
+    button.className = "floating-cart-button";
+    button.type = "button";
+    button.innerHTML = "🛒";
+    button.setAttribute("aria-label", "Go to checkout");
+    document.body.appendChild(button);
+  }
+  button.dataset.productId = productId;
+  button.classList.add("is-visible");
+}
+
 async function addToCart(productId) {
   if (!(await requireLoginForStoreAction())) return;
   try {
     const data = await api("/api/store/cart", { method: "POST", body: JSON.stringify({ productId, quantity: 1 }) });
     storeState.cart = data.cart || [];
     toast("Added to cart.");
+    showFloatingCartButton(productId);
     renderProfileDashboard();
     if (qs("#checkoutPage")) {
       setTimeout(() => { window.location.href = "/profile"; }, 700);
@@ -1423,27 +1485,35 @@ function checkoutTotal() {
 function updateCheckoutPaymentFields() {
   const methodSelect = qs("#checkoutPaymentMethod");
   const deliveryMethodSelect = qs("#checkoutDeliveryPaymentMethod");
-  const bkashReady = Boolean(storeState.paymentSettings.bkashNumber);
-  const nagadReady = Boolean(storeState.paymentSettings.nagadNumber);
+  const methods = [
+    ["bkash_nagad", manualPaymentReady("bkash_nagad"), "bKash and Nagad"],
+    ["rocket", manualPaymentReady("rocket"), "Rocket"],
+    ["bank_transfer", manualPaymentReady("bank_transfer"), "Bangladeshi Bank Transfer"]
+  ];
+  const deliveryMethods = [
+    ["bkash", manualPaymentReady("bkash"), "bKash delivery fee"],
+    ["nagad", manualPaymentReady("nagad"), "Nagad delivery fee"],
+    ["rocket", manualPaymentReady("rocket"), "Rocket delivery fee"],
+    ["bank_transfer", manualPaymentReady("bank_transfer"), "Bank transfer delivery fee"]
+  ];
   const setOptionState = (select, value, ready, label) => {
     const option = select?.querySelector(`option[value="${value}"]`);
     if (!option) return;
     option.disabled = !ready;
     option.textContent = ready ? label : `${label} (not configured)`;
   };
-  setOptionState(methodSelect, "bkash_nagad", bkashReady || nagadReady, "bKash and Nagad");
-  setOptionState(deliveryMethodSelect, "bkash", bkashReady, "bKash delivery fee");
-  setOptionState(deliveryMethodSelect, "nagad", nagadReady, "Nagad delivery fee");
+  methods.forEach(([value, ready, label]) => setOptionState(methodSelect, value, ready, label));
+  deliveryMethods.forEach(([value, ready, label]) => setOptionState(deliveryMethodSelect, value, ready, label));
 
-  if ((methodSelect?.value === "bkash_nagad" && !(bkashReady || nagadReady)) || (methodSelect?.value === "bkash" && !bkashReady) || (methodSelect?.value === "nagad" && !nagadReady)) methodSelect.value = "cod";
-  if (deliveryMethodSelect && ((deliveryMethodSelect.value === "bkash" && !bkashReady) || (deliveryMethodSelect.value === "nagad" && !nagadReady) || !deliveryMethodSelect.value)) {
-    deliveryMethodSelect.value = bkashReady ? "bkash" : (nagadReady ? "nagad" : "");
+  if (methodSelect?.value !== "cod" && !manualPaymentReady(methodSelect?.value || "")) methodSelect.value = "cod";
+  if (deliveryMethodSelect && (!deliveryMethodSelect.value || !manualPaymentReady(deliveryMethodSelect.value))) {
+    deliveryMethodSelect.value = firstReadyManualMethod();
   }
 
   updateCheckoutSummary();
 
   const method = methodSelect?.value || "cod";
-  const isManual = method === "bkash_nagad" || method === "bkash" || method === "nagad";
+  const isManual = method !== "cod";
   const isCod = method === "cod";
   const sender = qs("#checkoutSenderNumber");
   const transaction = qs("#checkoutTransactionId");
@@ -1456,21 +1526,20 @@ function updateCheckoutPaymentFields() {
   const instruction = qs("#manualPaymentInstruction");
   if (!instruction) return;
   if (isCod) {
-    const advanceMethod = deliveryMethodSelect?.value || (bkashReady ? "bkash" : (nagadReady ? "nagad" : ""));
-    const number = advanceMethod === "bkash" ? storeState.paymentSettings.bkashNumber : storeState.paymentSettings.nagadNumber;
+    const advanceMethod = deliveryMethodSelect?.value || firstReadyManualMethod();
     instruction.innerHTML = `
       <strong>Cash on Delivery: delivery fee must be paid first</strong>
       <p>Pay only the delivery fee now: <b>${money(checkoutDeliveryFee())}</b>. Pay product price <b>${money(checkoutProductSubtotal())}</b> when the order is delivered.</p>
-      <p>Send delivery fee by ${escapeHtml(advanceMethod ? paymentChannelLabel(advanceMethod) : "bKash/Nagad")} to: <b>${escapeHtml(number || "Payment number not configured yet")}</b></p>
-      <p>After sending, enter your sender number and Transaction ID to complete the order.</p>
+      <p>Send delivery fee by ${escapeHtml(advanceMethod ? paymentChannelLabel(advanceMethod) : "manual payment")} to:<br />${paymentDestinationForMethod(advanceMethod)}</p>
+      <p>After sending, enter your sender number and Transaction ID/reference to complete the order.</p>
     `;
     return;
   }
   instruction.innerHTML = `
     <strong>${paymentMethodLabel(method)}</strong>
     <p>Total to send now: <b>${money(checkoutTotal())}</b></p>
-    <p>Send payment to:<br />${paymentDestinationHtml()}</p>
-    <p>${escapeHtml(storeState.paymentSettings.instructions || "After payment, enter your sender number and Transaction ID. Admin will verify it manually.")}</p>
+    <p>Send payment to:<br />${paymentDestinationForMethod(method)}</p>
+    <p>${escapeHtml(storeState.paymentSettings.instructions || "After payment, enter your sender number and Transaction ID/reference. Admin will verify it manually.")}</p>
   `;
 }
 
@@ -1522,18 +1591,18 @@ function checkoutFormMarkup(product = {}) {
             <p>Delivery: <b id="checkoutDeliveryRateLabel">Feni rate</b> — <b id="checkoutDeliveryFeeValue">${money(productFeniDeliveryCharge(product))}</b></p>
             <p>Current total: <b id="checkoutTotalValue">${money(Number(product.price || 0) + productFeniDeliveryCharge(product))}</b></p>
           </div>
-          <div class="form-group full"><label for="checkoutPaymentMethod">Payment Method</label><select class="form-input" id="checkoutPaymentMethod"><option value="cod">Cash on Delivery</option><option value="bkash_nagad">bKash and Nagad</option></select></div>
-          <div class="form-group cod-delivery-payment-field full"><label for="checkoutDeliveryPaymentMethod">Pay Delivery Fee With</label><select class="form-input" id="checkoutDeliveryPaymentMethod"><option value="bkash">bKash delivery fee</option><option value="nagad">Nagad delivery fee</option></select></div>
+          <div class="form-group full"><label for="checkoutPaymentMethod">Payment Method</label><select class="form-input" id="checkoutPaymentMethod"><option value="cod">Cash on Delivery</option><option value="bkash_nagad">bKash and Nagad</option><option value="rocket">Rocket</option><option value="bank_transfer">Bangladeshi Bank Transfer</option></select></div>
+          <div class="form-group cod-delivery-payment-field full"><label for="checkoutDeliveryPaymentMethod">Pay Delivery Fee With</label><select class="form-input" id="checkoutDeliveryPaymentMethod"><option value="bkash">bKash delivery fee</option><option value="nagad">Nagad delivery fee</option><option value="rocket">Rocket delivery fee</option><option value="bank_transfer">Bank transfer delivery fee</option></select></div>
           <div class="payment-instruction-card full" id="manualPaymentInstruction"></div>
           <div class="form-group manual-payment-field"><label for="checkoutSenderNumber">Sender Number</label><input class="form-input" id="checkoutSenderNumber" placeholder="Number used to send money" /></div>
-          <div class="form-group manual-payment-field"><label for="checkoutTransactionId">Transaction ID</label><input class="form-input" id="checkoutTransactionId" placeholder="bKash/Nagad transaction ID" /></div>
+          <div class="form-group manual-payment-field"><label for="checkoutTransactionId">Transaction ID</label><input class="form-input" id="checkoutTransactionId" placeholder="Transaction ID / reference" /></div>
           <button class="btn btn-primary btn-block full" type="submit">Place Order</button>
         </form>
       </article>
       <aside class="admin-card checkout-help-card">
         <p class="section-kicker">Payment rule</p>
         <h2>COD still needs delivery fee first</h2>
-        <p class="section-copy">For Cash on Delivery, the product price is paid when delivered, but the delivery charge must be paid in advance by bKash or Nagad before submitting the order.</p>
+        <p class="section-copy">For Cash on Delivery, the product price is paid when delivered, but the delivery charge must be paid in advance by bKash, Nagad, Rocket, or Bangladeshi bank transfer before submitting the order.</p>
       </aside>
     </div>
   `;
@@ -1961,37 +2030,34 @@ function renderPrescriptionPaymentInstruction(order = {}, method = "cod", delive
   const medicineTotal = Number(order.productPrice || 0);
   const total = prescriptionOrderTotal(order);
   if (method === "cod") {
-    const number = deliveryMethod === "nagad" ? storeState.paymentSettings.nagadNumber : storeState.paymentSettings.bkashNumber;
     return `
       <strong>Cash on Delivery: delivery fee must be paid first</strong>
       <p>Pay only the delivery fee now: <b>${money(deliveryFee)}</b>. Pay total medicine price <b>${money(medicineTotal)}</b> when delivered.</p>
-      <p>Send delivery fee by ${escapeHtml(paymentChannelLabel(deliveryMethod))} to: <b>${escapeHtml(number || "Payment number not configured yet")}</b></p>
-      <p>After sending, enter your sender number and Transaction ID, then submit payment details.</p>
+      <p>Send delivery fee by ${escapeHtml(paymentChannelLabel(deliveryMethod))} to:<br />${paymentDestinationForMethod(deliveryMethod)}</p>
+      <p>After sending, enter your sender number and Transaction ID/reference, then submit payment details.</p>
     `;
   }
   return `
-    <strong>bKash and Nagad full payment</strong>
+    <strong>${paymentMethodLabel(method)} full payment</strong>
     <p>Total to send now: <b>${money(total)}</b></p>
-    <p>Send payment to:<br />${paymentDestinationHtml()}</p>
-    <p>After payment, enter your sender number and Transaction ID. Admin will verify it manually.</p>
+    <p>Send payment to:<br />${paymentDestinationForMethod(method)}</p>
+    <p>After payment, enter your sender number and Transaction ID/reference. Admin will verify it manually.</p>
   `;
 }
 
 function renderPrescriptionPaymentForm(order = {}) {
   if (!canSubmitPrescriptionPayment(order)) return "";
-  const bkashReady = Boolean(storeState.paymentSettings.bkashNumber);
-  const nagadReady = Boolean(storeState.paymentSettings.nagadNumber);
-  const hasAnyManualPayment = bkashReady || nagadReady;
+  const hasAnyManualPayment = Boolean(firstReadyManualMethod());
   if (!hasAnyManualPayment) {
-    return `<div class="payment-instruction-card prescription-payment-card"><strong>Payment number not configured</strong><p>Admin has added the price, but bKash/Nagad numbers are not configured yet. Please contact Medicare At Home before paying.</p></div>`;
+    return `<div class="payment-instruction-card prescription-payment-card"><strong>Payment method not configured</strong><p>Admin has added the price, but payment details are not configured yet. Please contact Medicare At Home before paying.</p></div>`;
   }
-  const defaultDeliveryMethod = bkashReady ? "bkash" : "nagad";
+  const defaultDeliveryMethod = firstReadyManualMethod();
   return `
     <form class="prescription-payment-form" data-prescription-payment-form="${escapeHtml(order.id)}">
       <div class="prescription-payment-head">
         <div>
           <strong>Complete prescribed medicine payment</strong>
-          <small>Choose Cash on Delivery or full bKash/Nagad payment, then submit transaction details.</small>
+          <small>Choose COD or full manual payment, then submit transaction details.</small>
         </div>
         <span>${money(prescriptionOrderTotal(order))}</span>
       </div>
@@ -2000,20 +2066,24 @@ function renderPrescriptionPaymentForm(order = {}) {
         <label>Payment Method
           <select class="form-input" name="paymentMethod" data-prescription-payment-method>
             <option value="cod">Cash on Delivery</option>
-            <option value="bkash_nagad" ${hasAnyManualPayment ? "" : "disabled"}>bKash and Nagad</option>
+            <option value="bkash_nagad" ${manualPaymentReady("bkash_nagad") ? "" : "disabled"}>bKash and Nagad</option>
+            <option value="rocket" ${manualPaymentReady("rocket") ? "" : "disabled"}>Rocket</option>
+            <option value="bank_transfer" ${manualPaymentReady("bank_transfer") ? "" : "disabled"}>Bangladeshi Bank Transfer</option>
           </select>
         </label>
         <label data-prescription-cod-field>Pay Delivery Fee With
           <select class="form-input" name="deliveryPaymentMethod" data-prescription-delivery-payment-method>
-            <option value="bkash" ${bkashReady ? "" : "disabled"}>${bkashReady ? "bKash delivery fee" : "bKash delivery fee (not configured)"}</option>
-            <option value="nagad" ${nagadReady ? "" : "disabled"}>${nagadReady ? "Nagad delivery fee" : "Nagad delivery fee (not configured)"}</option>
+            <option value="bkash" ${manualPaymentReady("bkash") ? "" : "disabled"}>${manualPaymentReady("bkash") ? "bKash delivery fee" : "bKash delivery fee (not configured)"}</option>
+            <option value="nagad" ${manualPaymentReady("nagad") ? "" : "disabled"}>${manualPaymentReady("nagad") ? "Nagad delivery fee" : "Nagad delivery fee (not configured)"}</option>
+            <option value="rocket" ${manualPaymentReady("rocket") ? "" : "disabled"}>${manualPaymentReady("rocket") ? "Rocket delivery fee" : "Rocket delivery fee (not configured)"}</option>
+            <option value="bank_transfer" ${manualPaymentReady("bank_transfer") ? "" : "disabled"}>${manualPaymentReady("bank_transfer") ? "Bank transfer delivery fee" : "Bank transfer delivery fee (not configured)"}</option>
           </select>
         </label>
         <label>Sender Number
-          <input class="form-input" name="senderNumber" required placeholder="Number used to send money" />
+          <input class="form-input" name="senderNumber" required placeholder="Number/account used to send money" />
         </label>
         <label>Transaction ID
-          <input class="form-input" name="transactionId" required placeholder="bKash/Nagad transaction ID" />
+          <input class="form-input" name="transactionId" required placeholder="Transaction ID / reference" />
         </label>
         <button class="small-btn" type="submit">Submit Payment Details</button>
       </div>
@@ -2029,16 +2099,12 @@ function updatePrescriptionPaymentForms(root = document) {
     const deliverySelect = form.querySelector("[data-prescription-delivery-payment-method]");
     const codField = form.querySelector("[data-prescription-cod-field]");
     const instruction = form.querySelector("[data-prescription-payment-instruction]");
-    const bkashReady = Boolean(storeState.paymentSettings.bkashNumber);
-    const nagadReady = Boolean(storeState.paymentSettings.nagadNumber);
-
-    if (deliverySelect && ((deliverySelect.value === "bkash" && !bkashReady) || (deliverySelect.value === "nagad" && !nagadReady) || !deliverySelect.value)) {
-      deliverySelect.value = bkashReady ? "bkash" : (nagadReady ? "nagad" : "");
-    }
+    if (deliverySelect && (!deliverySelect.value || !manualPaymentReady(deliverySelect.value))) deliverySelect.value = firstReadyManualMethod();
+    if (methodSelect?.value !== "cod" && !manualPaymentReady(methodSelect?.value || "")) methodSelect.value = "cod";
     const method = methodSelect?.value || "cod";
     if (codField) codField.classList.toggle("hidden", method !== "cod");
     if (deliverySelect) deliverySelect.required = method === "cod";
-    if (instruction) instruction.innerHTML = renderPrescriptionPaymentInstruction(order, method, deliverySelect?.value || (bkashReady ? "bkash" : "nagad"));
+    if (instruction) instruction.innerHTML = renderPrescriptionPaymentInstruction(order, method, deliverySelect?.value || firstReadyManualMethod());
   });
 }
 
@@ -2212,6 +2278,29 @@ function bindStoreEvents() {
       return;
     }
 
+    const floatingCart = event.target.closest("#floatingCartCheckoutButton");
+    if (floatingCart) {
+      event.preventDefault();
+      await startOrder(floatingCart.dataset.productId || "");
+      return;
+    }
+
+    const addMedicine = event.target.closest("[data-add-prescription-medicine]");
+    if (addMedicine) {
+      event.preventDefault();
+      addPrescriptionMedicineRow();
+      updatePrescriptionQuantityVisibility();
+      return;
+    }
+
+    const removeMedicine = event.target.closest("[data-remove-prescription-medicine]");
+    if (removeMedicine) {
+      event.preventDefault();
+      removeMedicine.closest(".medicine-name-row")?.remove();
+      updatePrescriptionQuantityVisibility();
+      return;
+    }
+
     const cartButton = event.target.closest("[data-store-cart]");
     if (cartButton) {
       event.preventDefault();
@@ -2306,7 +2395,7 @@ function bindStoreEvents() {
 
   document.addEventListener("input", (event) => {
     if (event.target.matches("#checkoutQuantity, #checkoutDeliveryLocation, #checkoutAddress")) updateCheckoutPaymentFields();
-    if (event.target.matches("#prescriptionMedicineName")) updatePrescriptionQuantityVisibility();
+    if (event.target.matches("[data-prescription-medicine-name]")) updatePrescriptionQuantityVisibility();
   });
 
   document.addEventListener("submit", async (event) => {

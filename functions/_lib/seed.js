@@ -15,6 +15,7 @@ export const defaultSettings = {
   navStoreLabel: "Store",
   navDoctorsLabel: "Doctors",
   navAmbulanceLabel: "Ambulance",
+  navHospitalLabel: "Hospital",
   navBloodLabel: "Blood",
   navHowItWorksLabel: "About",
   navContactLabel: "Contact",
@@ -26,6 +27,8 @@ export const defaultSettings = {
   doctorsPageCopy: "Tap a card to open the full doctor profile with phone, WhatsApp, designation and chamber location.",
   ambulancePageTitle: "Need an ambulance?",
   ambulancePageCopy: "Call or message us for ambulance support. Share patient condition, pickup location and destination.",
+  hospitalPageTitle: "Nearby hospitals",
+  hospitalPageCopy: "Browse hospital information, photos, contact numbers and addresses.",
   ambulanceDescription: "Fast ambulance contact support for Medicare At Home visitors. Use the call button for urgent help or WhatsApp to send pickup details.",
   ambulanceButtonText: "Order Ambulance",
   ambulancePhone: "+8801609672748",
@@ -57,6 +60,7 @@ export const defaultSettings = {
     Plaster: "🏥",
     "Home Medical Care": "🏠"
   },
+  servicePhotos: {},
   serviceDescriptions: {
     Injection: "Home visit injection support from trained medical professionals.",
     Cannula: "Cannula support at home with appointment confirmation by phone or WhatsApp.",
@@ -94,6 +98,7 @@ async function createSchema(db) {
     navStoreLabel TEXT,
     navDoctorsLabel TEXT,
     navAmbulanceLabel TEXT,
+    navHospitalLabel TEXT,
     navBloodLabel TEXT,
     navHowItWorksLabel TEXT,
     navContactLabel TEXT,
@@ -105,6 +110,8 @@ async function createSchema(db) {
     doctorsPageCopy TEXT,
     ambulancePageTitle TEXT,
     ambulancePageCopy TEXT,
+    hospitalPageTitle TEXT,
+    hospitalPageCopy TEXT,
     ambulanceDescription TEXT,
     ambulanceButtonText TEXT,
     ambulancePhone TEXT,
@@ -130,6 +137,7 @@ async function createSchema(db) {
     whatsapp TEXT,
     serviceTags TEXT,
     serviceIcons TEXT,
+    servicePhotos TEXT,
     serviceDescriptions TEXT,
     emergencyNote TEXT,
     stats TEXT,
@@ -141,6 +149,7 @@ async function createSchema(db) {
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     name TEXT NOT NULL,
     designation TEXT,
+    designationNote TEXT,
     specialty TEXT,
     degrees TEXT,
     experience TEXT,
@@ -175,12 +184,45 @@ async function createSchema(db) {
     updatedAt TEXT
   )`);
 
+  await db.execute(`CREATE TABLE IF NOT EXISTS ambulances (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    title TEXT,
+    info TEXT,
+    photoUrl TEXT,
+    phone TEXT,
+    whatsapp TEXT,
+    sortOrder INTEGER DEFAULT 99,
+    isActive INTEGER DEFAULT 1,
+    createdAt TEXT,
+    updatedAt TEXT
+  )`);
+
+  await db.execute(`CREATE TABLE IF NOT EXISTS hospitals (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    name TEXT,
+    photoUrl TEXT,
+    galleryPhotos TEXT,
+    address TEXT,
+    phone TEXT,
+    whatsapp TEXT,
+    description TEXT,
+    services TEXT,
+    sortOrder INTEGER DEFAULT 99,
+    isActive INTEGER DEFAULT 1,
+    createdAt TEXT,
+    updatedAt TEXT
+  )`);
+
   await migrateSettingsSchema(db);
   await migrateDoctorsSchema(db);
   await migrateBloodProfilesSchema(db);
+  await migrateAmbulancesSchema(db);
+  await migrateHospitalsSchema(db);
 
   await db.execute("CREATE INDEX IF NOT EXISTS idx_doctors_active_sort ON doctors (isActive, sortOrder, createdAt)");
   await db.execute("CREATE INDEX IF NOT EXISTS idx_blood_approved_group ON blood_profiles (isApproved, bloodGroup, createdAt)");
+  await db.execute("CREATE INDEX IF NOT EXISTS idx_ambulances_active_sort ON ambulances (isActive, sortOrder, createdAt)");
+  await db.execute("CREATE INDEX IF NOT EXISTS idx_hospitals_active_sort ON hospitals (isActive, sortOrder, createdAt)");
 }
 
 async function getTableColumns(db, table) {
@@ -228,6 +270,7 @@ async function migrateSettingsSchema(db) {
     ["navStoreLabel", "TEXT"],
     ["navDoctorsLabel", "TEXT"],
     ["navAmbulanceLabel", "TEXT"],
+    ["navHospitalLabel", "TEXT"],
     ["navBloodLabel", "TEXT"],
     ["navHowItWorksLabel", "TEXT"],
     ["navContactLabel", "TEXT"],
@@ -239,6 +282,8 @@ async function migrateSettingsSchema(db) {
     ["doctorsPageCopy", "TEXT"],
     ["ambulancePageTitle", "TEXT"],
     ["ambulancePageCopy", "TEXT"],
+    ["hospitalPageTitle", "TEXT"],
+    ["hospitalPageCopy", "TEXT"],
     ["ambulanceDescription", "TEXT"],
     ["ambulanceButtonText", "TEXT"],
     ["ambulancePhone", "TEXT"],
@@ -264,6 +309,7 @@ async function migrateSettingsSchema(db) {
     ["whatsapp", "TEXT"],
     ["serviceTags", "TEXT"],
     ["serviceIcons", "TEXT"],
+    ["servicePhotos", "TEXT"],
     ["serviceDescriptions", "TEXT"],
     ["emergencyNote", "TEXT"],
     ["stats", "TEXT"],
@@ -276,6 +322,7 @@ async function migrateDoctorsSchema(db) {
   await migrateColumns(db, "doctors", [
     ["name", "TEXT"],
     ["designation", "TEXT"],
+    ["designationNote", "TEXT"],
     ["specialty", "TEXT"],
     ["degrees", "TEXT"],
     ["experience", "TEXT"],
@@ -307,6 +354,37 @@ async function migrateBloodProfilesSchema(db) {
     ["whatsapp", "TEXT"],
     ["homeAddress", "TEXT"],
     ["isApproved", "INTEGER DEFAULT 0"],
+    ["createdAt", "TEXT"],
+    ["updatedAt", "TEXT"]
+  ]);
+}
+
+async function migrateAmbulancesSchema(db) {
+  await migrateColumns(db, "ambulances", [
+    ["title", "TEXT"],
+    ["info", "TEXT"],
+    ["photoUrl", "TEXT"],
+    ["phone", "TEXT"],
+    ["whatsapp", "TEXT"],
+    ["sortOrder", "INTEGER DEFAULT 99"],
+    ["isActive", "INTEGER DEFAULT 1"],
+    ["createdAt", "TEXT"],
+    ["updatedAt", "TEXT"]
+  ]);
+}
+
+async function migrateHospitalsSchema(db) {
+  await migrateColumns(db, "hospitals", [
+    ["name", "TEXT"],
+    ["photoUrl", "TEXT"],
+    ["galleryPhotos", "TEXT"],
+    ["address", "TEXT"],
+    ["phone", "TEXT"],
+    ["whatsapp", "TEXT"],
+    ["description", "TEXT"],
+    ["services", "TEXT"],
+    ["sortOrder", "INTEGER DEFAULT 99"],
+    ["isActive", "INTEGER DEFAULT 1"],
     ["createdAt", "TEXT"],
     ["updatedAt", "TEXT"]
   ]);

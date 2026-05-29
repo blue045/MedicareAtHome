@@ -102,6 +102,29 @@ function cleanServiceMedia(value) {
   return cleanText(media, 12);
 }
 
+function cleanImage(value) {
+  const media = cleanText(value, 800000);
+  if (!media) return "";
+  if (/^data:image\/(jpeg|jpg|png|webp);base64,/i.test(media)) return media;
+  if (/^https?:\/\//i.test(media) || media.startsWith("/")) return cleanText(media, 1200);
+  return "";
+}
+
+function cleanPhotoList(value, maxItems = 8) {
+  const list = Array.isArray(value) ? value : String(value || "").split(/[\n,]+/);
+  return list.map((item) => cleanImage(item)).filter(Boolean).slice(0, maxItems);
+}
+
+function cleanServicePhotos(value) {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return {};
+  return Object.fromEntries(
+    Object.entries(value)
+      .map(([service, photos]) => [cleanText(service, 90), cleanPhotoList(photos, 8)])
+      .filter(([service, photos]) => service && photos.length)
+      .slice(0, 32)
+  );
+}
+
 function cleanServiceIcons(value) {
   if (!value || typeof value !== "object" || Array.isArray(value)) return {};
   return Object.fromEntries(
@@ -141,6 +164,7 @@ export function normalizeDoctor(input, existing = {}) {
   const doctor = {
     name: cleanText(input.name, 120),
     designation: DOCTOR_DESIGNATIONS.has(designation) ? designation : "",
+    designationNote: cleanText(input.designationNote || input.designationText || safeExisting.designationNote, 80),
     specialty: cleanText(input.specialty, 120),
     degrees: cleanText(input.degrees, 160),
     experience: cleanText(input.experience, 120),
@@ -194,6 +218,7 @@ export function normalizeSettings(input, existing = {}) {
     navStoreLabel: cleanText(input.navStoreLabel, 240) || safeExisting.navStoreLabel || "Store",
     navDoctorsLabel: cleanText(input.navDoctorsLabel, 240) || safeExisting.navDoctorsLabel || "Doctors",
     navAmbulanceLabel: cleanText(input.navAmbulanceLabel, 240) || safeExisting.navAmbulanceLabel || "Ambulance",
+    navHospitalLabel: cleanText(input.navHospitalLabel, 240) || safeExisting.navHospitalLabel || "Hospital",
     navBloodLabel: cleanText(input.navBloodLabel, 240) || safeExisting.navBloodLabel || "Blood",
     navHowItWorksLabel: cleanText(input.navHowItWorksLabel, 240) || safeExisting.navHowItWorksLabel || "About",
     navContactLabel: cleanText(input.navContactLabel, 240) || safeExisting.navContactLabel || "Contact",
@@ -205,6 +230,8 @@ export function normalizeSettings(input, existing = {}) {
     doctorsPageCopy: cleanText(input.doctorsPageCopy, 240) || safeExisting.doctorsPageCopy || "Tap a card to open the full doctor profile with phone, WhatsApp, services and availability.",
     ambulancePageTitle: cleanText(input.ambulancePageTitle, 240) || safeExisting.ambulancePageTitle || "Need an ambulance?",
     ambulancePageCopy: cleanText(input.ambulancePageCopy, 300) || safeExisting.ambulancePageCopy || "Call or message us for ambulance support. Share patient condition, pickup location and destination.",
+    hospitalPageTitle: cleanText(input.hospitalPageTitle, 240) || safeExisting.hospitalPageTitle || "Nearby hospitals",
+    hospitalPageCopy: cleanText(input.hospitalPageCopy, 300) || safeExisting.hospitalPageCopy || "Browse hospital information, photos, contact numbers and addresses.",
     ambulanceDescription: cleanText(input.ambulanceDescription, 800) || safeExisting.ambulanceDescription || "Fast ambulance contact support for Medicare At Home visitors. Use the call button for urgent help or WhatsApp to send pickup details.",
     ambulanceButtonText: cleanText(input.ambulanceButtonText, 80) || safeExisting.ambulanceButtonText || "Order Ambulance",
     ambulancePhone: cleanPhone(input.ambulancePhone) || safeExisting.ambulancePhone || "+8801609672748",
@@ -230,6 +257,7 @@ export function normalizeSettings(input, existing = {}) {
     whatsapp: cleanPhone(input.whatsapp) || safeExisting.whatsapp || "",
     serviceTags: cleanList(input.serviceTags, 16),
     serviceIcons: input.serviceIcons && typeof input.serviceIcons === "object" && !Array.isArray(input.serviceIcons) ? cleanServiceIcons(input.serviceIcons) : (safeExisting.serviceIcons || {}),
+    servicePhotos: input.servicePhotos && typeof input.servicePhotos === "object" && !Array.isArray(input.servicePhotos) ? cleanServicePhotos(input.servicePhotos) : (safeExisting.servicePhotos || {}),
     serviceDescriptions: Object.keys(cleanServiceDescriptions(input.serviceDescriptions)).length ? cleanServiceDescriptions(input.serviceDescriptions) : (safeExisting.serviceDescriptions || {}),
     emergencyNote: cleanText(input.emergencyNote, 700) || safeExisting.emergencyNote || "For life-threatening emergencies, contact your nearest hospital or emergency hotline immediately.",
     stats: Array.isArray(input.stats) && input.stats.length
@@ -287,6 +315,54 @@ export function normalizeBloodProfile(input, existing = {}) {
       createdAt: safeExisting.createdAt || new Date()
     }
   };
+}
+
+export function normalizeAmbulance(input, existing = {}) {
+  const { _id, id, ...safeExisting } = existing || {};
+  const item = {
+    title: cleanText(input.title || input.name || safeExisting.title, 140),
+    info: cleanText(input.info || input.description || safeExisting.info, 1200),
+    photoUrl: cleanImage(input.photoUrl) || (input.photoUrl === "" ? "" : safeExisting.photoUrl || ""),
+    phone: cleanPhone(input.phone) || safeExisting.phone || "",
+    whatsapp: cleanPhone(input.whatsapp) || safeExisting.whatsapp || "",
+    sortOrder: Number.isFinite(Number(input.sortOrder)) ? Number(input.sortOrder) : (safeExisting.sortOrder || 99),
+    isActive: input.isActive === undefined ? safeExisting.isActive !== false : input.isActive !== false,
+    updatedAt: new Date()
+  };
+  return { ok: true, value: { ...safeExisting, ...item, createdAt: safeExisting.createdAt || new Date() } };
+}
+
+export function normalizeHospital(input, existing = {}) {
+  const { _id, id, ...safeExisting } = existing || {};
+  const galleryPhotos = cleanPhotoList(input.galleryPhotos ?? safeExisting.galleryPhotos, 10);
+  const photoUrl = cleanImage(input.photoUrl) || galleryPhotos[0] || (input.photoUrl === "" ? "" : safeExisting.photoUrl || "");
+  const item = {
+    name: cleanText(input.name || safeExisting.name, 180),
+    photoUrl,
+    galleryPhotos: galleryPhotos.length ? galleryPhotos : (photoUrl ? [photoUrl] : []),
+    address: cleanText(input.address || safeExisting.address, 300),
+    phone: cleanPhone(input.phone) || safeExisting.phone || "",
+    whatsapp: cleanPhone(input.whatsapp) || safeExisting.whatsapp || "",
+    description: cleanText(input.description || input.info || safeExisting.description, 1500),
+    services: cleanText(input.services || safeExisting.services, 900),
+    sortOrder: Number.isFinite(Number(input.sortOrder)) ? Number(input.sortOrder) : (safeExisting.sortOrder || 99),
+    isActive: input.isActive === undefined ? safeExisting.isActive !== false : input.isActive !== false,
+    updatedAt: new Date()
+  };
+  if (!item.name) return { ok: false, error: "Hospital name is required." };
+  return { ok: true, value: { ...safeExisting, ...item, createdAt: safeExisting.createdAt || new Date() } };
+}
+
+export function toPublicAmbulance(document) {
+  if (!document) return null;
+  const { _id, id, ...rest } = document;
+  return { id: String(id ?? _id ?? ""), ...rest };
+}
+
+export function toPublicHospital(document) {
+  if (!document) return null;
+  const { _id, id, ...rest } = document;
+  return { id: String(id ?? _id ?? ""), ...rest };
 }
 
 export function toPublicBloodProfile(document, { admin = false } = {}) {
