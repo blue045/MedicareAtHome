@@ -102,7 +102,8 @@ const state = {
   appointmentWeekday: "",
   aboutProfiles: [],
   aboutPosts: [],
-  hospitalLoadError: false
+  hospitalLoadError: false,
+  hospitalsLoaded: false
 };
 
 const qs = (selector, root = document) => root.querySelector(selector);
@@ -432,7 +433,11 @@ function doctorDesignationText(doctor = {}) {
 function hospitalUrl(hospital = {}) {
   const id = String(hospital.id || "").trim();
   const nameSlug = slugify(hospital.name || "hospital");
-  return `/Hospital/${encodeURIComponent(id ? `${id}-${nameSlug}` : nameSlug)}`;
+  // Query-string routing is safer on Cloudflare Pages because it does not depend
+  // on dynamic redirect matching for capitalized /Hospital/:slug paths. The
+  // old pretty URL still works through getHospitalDetailSlug() below.
+  if (id) return `/Hospital?hospital=${encodeURIComponent(id)}&name=${encodeURIComponent(nameSlug)}`;
+  return `/Hospital/${encodeURIComponent(nameSlug)}`;
 }
 
 function hospitalMatchesSlug(hospital = {}, slug = "") {
@@ -444,6 +449,9 @@ function hospitalMatchesSlug(hospital = {}, slug = "") {
 }
 
 function getHospitalDetailSlug() {
+  const params = new URLSearchParams(window.location.search || "");
+  const queryId = params.get("hospital") || params.get("id");
+  if (queryId) return decodeURIComponent(String(queryId));
   const parts = window.location.pathname.split("/").filter(Boolean);
   if (parts[0]?.toLowerCase() !== "hospital" || !parts[1]) return "";
   return decodeURIComponent(parts.slice(1).join("/"));
@@ -707,10 +715,12 @@ async function loadData() {
         state.hospitalLoadError = false;
         const hospitalsResponse = await fetchJson(`/api/hospitals?fresh=${Date.now()}`, { cache: "no-store" });
         state.hospitals = Array.isArray(hospitalsResponse?.hospitals) ? hospitalsResponse.hospitals : [];
+        state.hospitalsLoaded = true;
         writePublicCache("hospitals", hospitalsResponse);
       } catch (error) {
         console.warn("Could not load hospitals", error);
         state.hospitalLoadError = true;
+        state.hospitalsLoaded = true;
         state.hospitals = Array.isArray(state.hospitals) ? state.hospitals : [];
       }
     })());
@@ -1180,7 +1190,7 @@ function renderHospitals() {
     return;
   }
   grid.innerHTML = hospitals.map((hospital) => `
-    <a class="doctor-card doctor-card-compact doctor-store-card hospital-card" href="${hospitalUrl(hospital)}" aria-label="View ${escapeHtml(hospital.name || "Hospital")} details">
+    <a class="doctor-card doctor-card-compact doctor-store-card hospital-card" href="${hospitalUrl(hospital)}" data-hospital-link="${escapeHtml(hospitalUrl(hospital))}" aria-label="View ${escapeHtml(hospital.name || "Hospital")} details">
       <div class="doctor-card-photo ${hospital.photoUrl ? "has-photo" : "doctor-card-photo-empty"}">
         ${hospital.photoUrl ? `<img src="${escapeHtml(hospital.photoUrl)}" alt="${escapeHtml(hospital.name || "Hospital")}" loading="lazy" decoding="async" />` : `<span>🏥</span>`}
       </div>
@@ -1222,6 +1232,10 @@ function renderHospitalPage() {
   if (!slug) return;
   const hospital = state.hospitals.find((item) => hospitalMatchesSlug(item, slug));
   if (!hospital) {
+    if (!state.hospitalsLoaded && !state.hospitalLoadError) {
+      container.innerHTML = `<div class="loading-state">Loading hospital details...</div>`;
+      return;
+    }
     container.innerHTML = state.hospitalLoadError
       ? `<div class="empty-state"><h2>Could not load hospital details</h2><p>Please refresh once after deploy. If this keeps happening, check Cloudflare Pages environment variables and the /api/hospitals route.</p></div>`
       : `<div class="empty-state"><h2>Hospital not found</h2><p>This hospital profile is not available right now.</p></div>`;
@@ -1472,6 +1486,20 @@ function initAmbulanceForm() {
   });
 }
 
+function initHospitalCardLinks() {
+  const grid = qs("#hospitalGrid");
+  if (!grid || grid.dataset.hospitalLinksReady === "true") return;
+  grid.dataset.hospitalLinksReady = "true";
+  grid.addEventListener("click", (event) => {
+    const link = event.target.closest("a[data-hospital-link]");
+    if (!link) return;
+    const href = link.getAttribute("href") || link.dataset.hospitalLink || "";
+    if (!href) return;
+    event.preventDefault();
+    window.location.assign(href);
+  });
+}
+
 function renderContact() {
   const settings = state.settings;
   const contactList = qs("#contactList");
@@ -1645,6 +1673,7 @@ initFilters();
 initAppointmentFinder();
 initBloodForm();
 initAmbulanceForm();
+initHospitalCardLinks();
 initLocationPermissionButtons();
 initPasswordVisibilityToggles();
 loadData();
