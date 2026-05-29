@@ -1189,37 +1189,77 @@ function renderHospitals() {
       : `<div class="empty-state">No hospital information found yet.</div>`;
     return;
   }
-  grid.innerHTML = hospitals.map((hospital) => `
-    <a class="doctor-card doctor-card-compact doctor-store-card hospital-card" href="${hospitalUrl(hospital)}" data-hospital-link="${escapeHtml(hospitalUrl(hospital))}" aria-label="View ${escapeHtml(hospital.name || "Hospital")} details">
-      <div class="doctor-card-photo ${hospital.photoUrl ? "has-photo" : "doctor-card-photo-empty"}">
-        ${hospital.photoUrl ? `<img src="${escapeHtml(hospital.photoUrl)}" alt="${escapeHtml(hospital.name || "Hospital")}" loading="lazy" decoding="async" />` : `<span>🏥</span>`}
+  grid.innerHTML = hospitals.map((hospital) => {
+    const photo = String(hospital.photoUrl || "").trim();
+    const href = hospitalUrl(hospital);
+    return `
+      <a class="store-card store-card-link hospital-store-card" href="${escapeHtml(href)}" data-hospital-link="${escapeHtml(href)}" aria-label="View ${escapeHtml(hospital.name || "Hospital")} details">
+        <div class="store-product-photo hospital-card-photo">
+          ${photo ? `<img src="${escapeHtml(photo)}" alt="${escapeHtml(hospital.name || "Hospital")}" loading="lazy" decoding="async" />` : `<span>🏥</span>`}
+        </div>
+        <div class="store-card-body hospital-card-body"><h3>${escapeHtml(hospital.name || "Hospital")}</h3></div>
+      </a>
+    `;
+  }).join("");
+}
+
+function renderHospitalGallery(hospital = {}, photos = []) {
+  if (!photos.length) {
+    return `
+      <div class="product-gallery hospital-product-gallery" data-product-gallery>
+        <div class="product-detail-photo hospital-detail-photo hospital-detail-photo-empty"><span>🏥</span></div>
       </div>
-      <div class="store-card-body doctor-card-body"><h3 class="doctor-name">${escapeHtml(hospital.name || "Hospital")}</h3></div>
-    </a>
-  `).join("");
+    `;
+  }
+  return `
+    <div class="product-gallery hospital-product-gallery" data-product-gallery>
+      <div class="product-gallery-track" data-gallery-track aria-label="Hospital photo gallery">
+        ${photos.map((photo, index) => `
+          <button class="product-detail-photo product-gallery-button product-gallery-slide hospital-gallery-slide" type="button" data-gallery-image="${escapeHtml(photo)}" aria-label="Open ${escapeHtml(hospital.name || "Hospital")} photo ${index + 1} of ${photos.length}">
+            <img src="${escapeHtml(photo)}" alt="${escapeHtml(hospital.name || "Hospital")} photo ${index + 1}" loading="${index === 0 ? "eager" : "lazy"}" decoding="async" />
+          </button>
+        `).join("")}
+      </div>
+      ${photos.length > 1 ? `
+        <div class="product-gallery-controls" aria-label="Hospital gallery controls">
+          <button class="product-gallery-nav" type="button" data-gallery-scroll="-1" aria-label="Previous hospital photo">‹</button>
+          <span class="product-gallery-count">Swipe or scroll photos</span>
+          <button class="product-gallery-nav" type="button" data-gallery-scroll="1" aria-label="Next hospital photo">›</button>
+        </div>
+      ` : ""}
+    </div>
+  `;
 }
 
 function renderHospitalDetail(hospital = {}) {
-  const photos = [hospital.photoUrl, ...(Array.isArray(hospital.galleryPhotos) ? hospital.galleryPhotos : [])].filter(Boolean).slice(0, 10);
+  const photos = [hospital.photoUrl, ...(Array.isArray(hospital.galleryPhotos) ? hospital.galleryPhotos : [])]
+    .map((photo) => String(photo || "").trim())
+    .filter(Boolean)
+    .slice(0, 12);
   const phone = normalizePhone(hospital.phone || "");
   const whatsapp = normalizeWhatsApp(hospital.whatsapp || hospital.phone || "");
   const message = encodeURIComponent(`Hello, I need information about ${hospital.name || "this hospital"}.`);
   return `
-    <article class="doctor-page-card hospital-detail-card">
-      <div class="doctor-detail-head">
-        <div class="avatar detail-avatar hospital-detail-avatar">${hospital.photoUrl ? `<img src="${escapeHtml(hospital.photoUrl)}" alt="${escapeHtml(hospital.name || "Hospital")}" loading="lazy" />` : "🏥"}</div>
-        <div><p class="section-kicker">Hospital</p><h2>${escapeHtml(hospital.name || "Hospital")}</h2>${hospital.address ? `<p class="doctor-specialty">${escapeHtml(hospital.address)}</p>` : ""}</div>
-      </div>
-      ${photos.length ? `<div class="hospital-gallery">${photos.map((photo) => `<img src="${escapeHtml(photo)}" alt="${escapeHtml(hospital.name || "Hospital")} photo" loading="lazy" />`).join("")}</div>` : ""}
-      ${hospital.description ? `<p class="doctor-detail-bio">${escapeHtml(hospital.description)}</p>` : ""}
-      <div class="doctor-detail-grid">
-        ${hospital.address ? `<div class="detail-row"><small>Address</small><strong>${escapeHtml(hospital.address)}</strong></div>` : ""}
-        ${phone ? `<div class="detail-row"><small>Phone</small><strong>${escapeHtml(hospital.phone || phone)}</strong></div>` : ""}
-        ${hospital.services ? `<div class="detail-row full"><small>Services / Notes</small><strong>${escapeHtml(hospital.services)}</strong></div>` : ""}
-      </div>
-      <div class="card-actions detail-actions">
-        ${phone ? `<a class="btn btn-ghost" href="tel:${phone}">Call Hospital</a>` : ""}
-        ${whatsapp ? `<a class="btn btn-primary" href="https://wa.me/${whatsapp}?text=${message}" target="_blank" rel="noopener noreferrer">WhatsApp</a>` : ""}
+    <article class="product-detail-card hospital-detail-card">
+      <div class="product-detail-layout hospital-detail-layout">
+        <div>
+          ${renderHospitalGallery(hospital, photos)}
+        </div>
+        <div class="product-detail-content hospital-detail-content">
+          <p class="section-kicker">Hospital</p>
+          <h2>${escapeHtml(hospital.name || "Hospital")}</h2>
+          ${hospital.address ? `<p class="doctor-specialty hospital-address-text">${escapeHtml(hospital.address)}</p>` : ""}
+          ${hospital.description ? `<p class="doctor-detail-bio hospital-description-text">${escapeHtml(hospital.description)}</p>` : ""}
+          <div class="doctor-detail-grid product-info-grid hospital-info-grid">
+            ${hospital.address ? `<div class="detail-row"><small>Address</small><strong>${escapeHtml(hospital.address)}</strong></div>` : ""}
+            ${phone ? `<div class="detail-row"><small>Phone</small><strong>${escapeHtml(hospital.phone || phone)}</strong></div>` : ""}
+            ${hospital.services ? `<div class="detail-row full"><small>Services / Notes</small><strong>${escapeHtml(hospital.services)}</strong></div>` : ""}
+          </div>
+          <div class="card-actions detail-actions hospital-detail-actions">
+            ${phone ? `<a class="btn btn-ghost" href="tel:${phone}">Call Hospital</a>` : ""}
+            ${whatsapp ? `<a class="btn btn-primary" href="https://wa.me/${whatsapp}?text=${message}" target="_blank" rel="noopener noreferrer">WhatsApp</a>` : ""}
+          </div>
+        </div>
       </div>
     </article>
   `;
