@@ -46,7 +46,7 @@ Email verification is now supported with Brevo free tier. To enable it:
 
 ```env
 REQUIRE_EMAIL_VERIFICATION=1
-SITE_URL=https://your-domain.pages.dev
+SITE_URL=https://.pages.dev
 BREVO_API_KEY=your_brevo_key
 BREVO_SENDER_EMAIL=your_verified_sender_email
 BREVO_SENDER_NAME=Medicare At Home
