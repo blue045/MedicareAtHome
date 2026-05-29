@@ -31,7 +31,12 @@ export async function onRequest(context) {
   );
   if (isHttps) headers.set("strict-transport-security", "max-age=15552000; includeSubDomains; preload");
 
-  if (pathname.startsWith("/assets/") || pathname === "/manifest.json" || pathname === "/robots.txt") {
+  if (pathname.startsWith("/assets/js/") || pathname.startsWith("/assets/css/")) {
+    // Keep code assets fresh enough for frequent free-plan deployments.
+    // The HTML still uses ?v= cache busting, but this prevents old JS/CSS from
+    // sticking forever when a browser or proxy ignores the query string.
+    headers.set("cache-control", "public, max-age=300, must-revalidate");
+  } else if (pathname.startsWith("/assets/") || pathname === "/manifest.json" || pathname === "/robots.txt") {
     headers.set("cache-control", "public, max-age=31536000, immutable");
   }
 

@@ -101,7 +101,8 @@ const state = {
   service: "",
   appointmentWeekday: "",
   aboutProfiles: [],
-  aboutPosts: []
+  aboutPosts: [],
+  hospitalLoadError: false
 };
 
 const qs = (selector, root = document) => root.querySelector(selector);
@@ -662,44 +663,88 @@ async function loadData() {
   applyCachedPublicData(needsDoctors, needsBlood, needsHospitals, needsAmbulances);
   renderAll();
 
+  // Load each public resource independently. One broken API must not keep another
+  // page stuck on a loading message.
   try {
     const settingsResponse = await fetchJson(`/api/settings?fresh=${Date.now()}`, { cache: "no-store" });
     state.settings = { ...fallbackSettings, ...(settingsResponse.settings || {}) };
     writePublicCache("settings", settingsResponse);
-
-    if (needsDoctors) {
-      const doctorsResponse = await fetchJson("/api/doctors");
-      state.doctors = Array.isArray(doctorsResponse?.doctors) ? doctorsResponse.doctors : fallbackDoctors;
-      writePublicCache("doctors", doctorsResponse);
-    }
-
-    if (needsBlood) {
-      const bloodResponse = await fetchJson(`/api/blood?fresh=${Date.now()}`, { cache: "no-store" });
-      state.bloodProfiles = Array.isArray(bloodResponse?.profiles) ? bloodResponse.profiles : [];
-    }
-
-    if (needsHospitals) {
-      const hospitalsResponse = await fetchJson(`/api/hospitals?fresh=${Date.now()}`, { cache: "no-store" });
-      state.hospitals = Array.isArray(hospitalsResponse?.hospitals) ? hospitalsResponse.hospitals : [];
-      writePublicCache("hospitals", hospitalsResponse);
-    }
-
-    if (needsAmbulances) {
-      const ambulancesResponse = await fetchJson(`/api/ambulances?fresh=${Date.now()}`, { cache: "no-store" });
-      state.ambulances = Array.isArray(ambulancesResponse?.ambulances) ? ambulancesResponse.ambulances : [];
-      writePublicCache("ambulances", ambulancesResponse);
-    }
-
-    if (needsAbout) {
-      const aboutResponse = await fetchJson(`/api/about?fresh=${Date.now()}`, { cache: "no-store" });
-      state.aboutProfiles = Array.isArray(aboutResponse?.profiles) ? aboutResponse.profiles : [];
-      state.aboutPosts = Array.isArray(aboutResponse?.posts) ? aboutResponse.posts : [];
-    }
-
     renderAll();
   } catch (error) {
-    console.warn(error);
+    console.warn("Could not load settings", error);
   }
+
+  const tasks = [];
+
+  if (needsDoctors) {
+    tasks.push((async () => {
+      try {
+        const doctorsResponse = await fetchJson(`/api/doctors?fresh=${Date.now()}`, { cache: "no-store" });
+        state.doctors = Array.isArray(doctorsResponse?.doctors) ? doctorsResponse.doctors : fallbackDoctors;
+        writePublicCache("doctors", doctorsResponse);
+      } catch (error) {
+        console.warn("Could not load doctors", error);
+        state.doctors = Array.isArray(state.doctors) ? state.doctors : fallbackDoctors;
+      }
+    })());
+  }
+
+  if (needsBlood) {
+    tasks.push((async () => {
+      try {
+        const bloodResponse = await fetchJson(`/api/blood?fresh=${Date.now()}`, { cache: "no-store" });
+        state.bloodProfiles = Array.isArray(bloodResponse?.profiles) ? bloodResponse.profiles : [];
+      } catch (error) {
+        console.warn("Could not load blood profiles", error);
+        state.bloodProfiles = [];
+      }
+    })());
+  }
+
+  if (needsHospitals) {
+    tasks.push((async () => {
+      try {
+        state.hospitalLoadError = false;
+        const hospitalsResponse = await fetchJson(`/api/hospitals?fresh=${Date.now()}`, { cache: "no-store" });
+        state.hospitals = Array.isArray(hospitalsResponse?.hospitals) ? hospitalsResponse.hospitals : [];
+        writePublicCache("hospitals", hospitalsResponse);
+      } catch (error) {
+        console.warn("Could not load hospitals", error);
+        state.hospitalLoadError = true;
+        state.hospitals = Array.isArray(state.hospitals) ? state.hospitals : [];
+      }
+    })());
+  }
+
+  if (needsAmbulances) {
+    tasks.push((async () => {
+      try {
+        const ambulancesResponse = await fetchJson(`/api/ambulances?fresh=${Date.now()}`, { cache: "no-store" });
+        state.ambulances = Array.isArray(ambulancesResponse?.ambulances) ? ambulancesResponse.ambulances : [];
+        writePublicCache("ambulances", ambulancesResponse);
+      } catch (error) {
+        console.warn("Could not load ambulances", error);
+        state.ambulances = Array.isArray(state.ambulances) ? state.ambulances : [];
+      }
+    })());
+  }
+
+  if (needsAbout) {
+    tasks.push((async () => {
+      try {
+        const aboutResponse = await fetchJson(`/api/about?fresh=${Date.now()}`, { cache: "no-store" });
+        state.aboutProfiles = Array.isArray(aboutResponse?.profiles) ? aboutResponse.profiles : [];
+        state.aboutPosts = Array.isArray(aboutResponse?.posts) ? aboutResponse.posts : [];
+      } catch (error) {
+        console.warn("Could not load about content", error);
+        state.aboutProfiles = [];
+        state.aboutPosts = [];
+      }
+    })());
+  }
+
+  if (tasks.length) await Promise.allSettled(tasks);
+  renderAll();
 }
 
 function renderAll() {
@@ -1129,7 +1174,9 @@ function renderHospitals() {
     .filter((item) => item.isActive !== false)
     .sort((a, b) => (Number(a.sortOrder) || 99) - (Number(b.sortOrder) || 99));
   if (!hospitals.length) {
-    grid.innerHTML = `<div class="empty-state">No hospital information found yet.</div>`;
+    grid.innerHTML = state.hospitalLoadError
+      ? `<div class="empty-state"><strong>Could not load hospital information.</strong><p>Please refresh once after deploy. If this keeps happening, check that your Turso environment variables are set in Cloudflare Pages.</p></div>`
+      : `<div class="empty-state">No hospital information found yet.</div>`;
     return;
   }
   grid.innerHTML = hospitals.map((hospital) => `
@@ -1175,7 +1222,9 @@ function renderHospitalPage() {
   if (!slug) return;
   const hospital = state.hospitals.find((item) => hospitalMatchesSlug(item, slug));
   if (!hospital) {
-    container.innerHTML = `<div class="empty-state"><h2>Hospital not found</h2><p>This hospital profile is not available right now.</p></div>`;
+    container.innerHTML = state.hospitalLoadError
+      ? `<div class="empty-state"><h2>Could not load hospital details</h2><p>Please refresh once after deploy. If this keeps happening, check Cloudflare Pages environment variables and the /api/hospitals route.</p></div>`
+      : `<div class="empty-state"><h2>Hospital not found</h2><p>This hospital profile is not available right now.</p></div>`;
     return;
   }
   document.title = `${hospital.name || "Hospital Details"} | ${state.settings.siteName || fallbackSettings.siteName}`;
