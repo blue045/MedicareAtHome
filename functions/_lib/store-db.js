@@ -328,6 +328,23 @@ async function addStoreColumn(db, table, name, definition) {
   }
 }
 
+async function safeStoreSchemaExecute(db, statement, args = []) {
+  try {
+    if (typeof statement === "string") {
+      await db.execute(statement);
+    } else {
+      await db.execute({ ...statement, args: statement.args || args });
+    }
+  } catch (error) {
+    // Store schema has changed many times during development. Some live free-plan
+    // databases may have older partial tables or duplicate historical data. Do not
+    // block signup/login/admin pages because a non-critical migration/index cannot
+    // be applied. The missing columns are added above; indexes/default cleanup can
+    // safely be skipped and retried on a future request.
+    console.warn("Store schema migration skipped:", String(error?.message || error));
+  }
+}
+
 async function ensureStoreSchema(db) {
   await db.execute(`CREATE TABLE IF NOT EXISTS store_users (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -458,6 +475,67 @@ async function ensureStoreSchema(db) {
     updatedAt TEXT
   )`);
 
+  // Older live deployments can have partial store tables. Add every column used by
+  // the current code before creating indexes or running admin queries, otherwise
+  // pages like Profile Photo, User Login Information, products, orders, and signup
+  // can all fail with a generic "Server error".
+  await addStoreColumn(db, "store_avatars", "label", "TEXT");
+  await addStoreColumn(db, "store_avatars", "photoUrl", "TEXT DEFAULT ''");
+  await addStoreColumn(db, "store_avatars", "sortOrder", "INTEGER DEFAULT 99");
+  await addStoreColumn(db, "store_avatars", "isActive", "INTEGER DEFAULT 1");
+  await addStoreColumn(db, "store_avatars", "createdAt", "TEXT");
+  await addStoreColumn(db, "store_avatars", "updatedAt", "TEXT");
+
+  await addStoreColumn(db, "store_products", "name", "TEXT DEFAULT ''");
+  await addStoreColumn(db, "store_products", "productType", "TEXT NOT NULL DEFAULT 'medicine'");
+  await addStoreColumn(db, "store_products", "photoUrl", "TEXT");
+  await addStoreColumn(db, "store_products", "price", "REAL NOT NULL DEFAULT 0");
+  await addStoreColumn(db, "store_products", "deliveryCharge", "REAL NOT NULL DEFAULT 0");
+  await addStoreColumn(db, "store_products", "feniDeliveryCharge", "REAL NOT NULL DEFAULT 0");
+  await addStoreColumn(db, "store_products", "outsideFeniDeliveryCharge", "REAL NOT NULL DEFAULT 0");
+  await addStoreColumn(db, "store_products", "stock", "INTEGER NOT NULL DEFAULT 0");
+  await addStoreColumn(db, "store_products", "description", "TEXT");
+  await addStoreColumn(db, "store_products", "additionalPhotos", "TEXT");
+  await addStoreColumn(db, "store_products", "isActive", "INTEGER DEFAULT 1");
+  await addStoreColumn(db, "store_products", "sortOrder", "INTEGER DEFAULT 99");
+  await addStoreColumn(db, "store_products", "createdAt", "TEXT");
+  await addStoreColumn(db, "store_products", "updatedAt", "TEXT");
+
+  await addStoreColumn(db, "store_cart", "userId", "INTEGER DEFAULT 0");
+  await addStoreColumn(db, "store_cart", "productId", "INTEGER DEFAULT 0");
+  await addStoreColumn(db, "store_cart", "quantity", "INTEGER NOT NULL DEFAULT 1");
+  await addStoreColumn(db, "store_cart", "createdAt", "TEXT");
+  await addStoreColumn(db, "store_cart", "updatedAt", "TEXT");
+
+  await addStoreColumn(db, "store_orders", "userId", "INTEGER DEFAULT 0");
+  await addStoreColumn(db, "store_orders", "productId", "INTEGER DEFAULT 0");
+  await addStoreColumn(db, "store_orders", "quantity", "INTEGER NOT NULL DEFAULT 1");
+  await addStoreColumn(db, "store_orders", "productName", "TEXT");
+  await addStoreColumn(db, "store_orders", "productPrice", "REAL NOT NULL DEFAULT 0");
+  await addStoreColumn(db, "store_orders", "deliveryCharge", "REAL NOT NULL DEFAULT 0");
+  await addStoreColumn(db, "store_orders", "customerName", "TEXT DEFAULT ''");
+  await addStoreColumn(db, "store_orders", "address", "TEXT DEFAULT ''");
+  await addStoreColumn(db, "store_orders", "phone", "TEXT DEFAULT ''");
+  await addStoreColumn(db, "store_orders", "status", "TEXT NOT NULL DEFAULT 'pending'");
+  await addStoreColumn(db, "store_orders", "createdAt", "TEXT");
+  await addStoreColumn(db, "store_orders", "updatedAt", "TEXT");
+
+  await addStoreColumn(db, "store_payment_settings", "bkashNumber", "TEXT");
+  await addStoreColumn(db, "store_payment_settings", "nagadNumber", "TEXT");
+  await addStoreColumn(db, "store_payment_settings", "instructions", "TEXT");
+  await addStoreColumn(db, "store_payment_settings", "createdAt", "TEXT");
+  await addStoreColumn(db, "store_payment_settings", "updatedAt", "TEXT");
+
+  await addStoreColumn(db, "store_comments", "productId", "INTEGER DEFAULT 0");
+  await addStoreColumn(db, "store_comments", "userId", "INTEGER");
+  await addStoreColumn(db, "store_comments", "userName", "TEXT");
+  await addStoreColumn(db, "store_comments", "rating", "INTEGER NOT NULL DEFAULT 5");
+  await addStoreColumn(db, "store_comments", "comment", "TEXT DEFAULT ''");
+  await addStoreColumn(db, "store_comments", "adminReply", "TEXT");
+  await addStoreColumn(db, "store_comments", "isVisible", "INTEGER DEFAULT 1");
+  await addStoreColumn(db, "store_comments", "createdAt", "TEXT");
+  await addStoreColumn(db, "store_comments", "updatedAt", "TEXT");
+
   await addStoreColumn(db, "store_orders", "paymentMethod", "TEXT NOT NULL DEFAULT 'cod'");
   await addStoreColumn(db, "store_orders", "transactionId", "TEXT");
   await addStoreColumn(db, "store_orders", "senderNumber", "TEXT");
@@ -484,23 +562,18 @@ async function ensureStoreSchema(db) {
   await addStoreColumn(db, "store_comments", "commenterType", "TEXT DEFAULT 'user'");
   await addStoreColumn(db, "store_comments", "isReview", "INTEGER DEFAULT 0");
 
-  await db.execute("CREATE INDEX IF NOT EXISTS idx_store_products_active_sort ON store_products (isActive, sortOrder, createdAt)");
-  await db.execute("CREATE INDEX IF NOT EXISTS idx_store_products_type_active_sort ON store_products (productType, isActive, sortOrder, createdAt)");
-  await db.execute("CREATE INDEX IF NOT EXISTS idx_store_cart_user ON store_cart (userId, updatedAt)");
-  await db.execute("CREATE INDEX IF NOT EXISTS idx_store_orders_user_status ON store_orders (userId, status, createdAt)");
-  await db.execute("CREATE INDEX IF NOT EXISTS idx_store_comments_product ON store_comments (productId, isVisible, createdAt)");
-  await db.execute("CREATE INDEX IF NOT EXISTS idx_store_comments_parent ON store_comments (parentId, createdAt)");
-  await db.execute("CREATE INDEX IF NOT EXISTS idx_store_comments_user_review ON store_comments (userId, productId, isReview)");
-  try {
-    await db.execute("CREATE UNIQUE INDEX IF NOT EXISTS uniq_store_user_product_review ON store_comments (userId, productId) WHERE isReview = 1 AND userId IS NOT NULL");
-  } catch {
-    // Keep old databases working even if duplicate historical reviews already exist.
-    // New reviews are still blocked by hasUserReviewedProduct() below.
-  }
-  await db.execute("CREATE INDEX IF NOT EXISTS idx_store_avatars_active_sort ON store_avatars (isActive, sortOrder, createdAt)");
-  await db.execute("CREATE INDEX IF NOT EXISTS idx_store_email_verify_user ON store_email_verification_tokens (userId, expiresAt)");
+  await safeStoreSchemaExecute(db, "CREATE INDEX IF NOT EXISTS idx_store_products_active_sort ON store_products (isActive, sortOrder, createdAt)");
+  await safeStoreSchemaExecute(db, "CREATE INDEX IF NOT EXISTS idx_store_products_type_active_sort ON store_products (productType, isActive, sortOrder, createdAt)");
+  await safeStoreSchemaExecute(db, "CREATE INDEX IF NOT EXISTS idx_store_cart_user ON store_cart (userId, updatedAt)");
+  await safeStoreSchemaExecute(db, "CREATE INDEX IF NOT EXISTS idx_store_orders_user_status ON store_orders (userId, status, createdAt)");
+  await safeStoreSchemaExecute(db, "CREATE INDEX IF NOT EXISTS idx_store_comments_product ON store_comments (productId, isVisible, createdAt)");
+  await safeStoreSchemaExecute(db, "CREATE INDEX IF NOT EXISTS idx_store_comments_parent ON store_comments (parentId, createdAt)");
+  await safeStoreSchemaExecute(db, "CREATE INDEX IF NOT EXISTS idx_store_comments_user_review ON store_comments (userId, productId, isReview)");
+  await safeStoreSchemaExecute(db, "CREATE UNIQUE INDEX IF NOT EXISTS uniq_store_user_product_review ON store_comments (userId, productId) WHERE isReview = 1 AND userId IS NOT NULL");
+  await safeStoreSchemaExecute(db, "CREATE INDEX IF NOT EXISTS idx_store_avatars_active_sort ON store_avatars (isActive, sortOrder, createdAt)");
+  await safeStoreSchemaExecute(db, "CREATE INDEX IF NOT EXISTS idx_store_email_verify_user ON store_email_verification_tokens (userId, expiresAt)");
 
-  await db.execute({
+  await safeStoreSchemaExecute(db, {
     sql: "UPDATE store_products SET description = '', updatedAt = ? WHERE description = ?",
     args: [new Date().toISOString(), "Starter store product. Edit or delete this from Superuser → Add Products."]
   });
@@ -1101,11 +1174,21 @@ export async function avatarPhotoExists(db, photoUrl) {
 }
 
 export async function createAvatar(db, avatar) {
+  const nowCreated = toIsoText(avatar.createdAt);
+  const nowUpdated = toIsoText(avatar.updatedAt);
   const result = await db.execute({
     sql: `INSERT INTO store_avatars (label, photoUrl, sortOrder, isActive, createdAt, updatedAt) VALUES (?, ?, ?, ?, ?, ?)`,
-    args: [avatar.label || "Profile photo", avatar.photoUrl, avatar.sortOrder || 99, boolToInt(avatar.isActive), toIsoText(avatar.createdAt), toIsoText(avatar.updatedAt)]
+    args: [avatar.label || "Profile photo", avatar.photoUrl, avatar.sortOrder || 99, boolToInt(avatar.isActive), nowCreated, nowUpdated]
   });
-  return getAvatarById(db, String(result.lastInsertRowid));
+  const insertedId = result.lastInsertRowid ?? result.lastInsertId ?? result.insertId;
+  if (insertedId !== undefined && insertedId !== null && String(insertedId) !== "") {
+    return getAvatarById(db, String(insertedId));
+  }
+  const lookup = await db.execute({
+    sql: "SELECT * FROM store_avatars WHERE photoUrl = ? ORDER BY id DESC LIMIT 1",
+    args: [avatar.photoUrl]
+  });
+  return rowToAvatar(lookup.rows[0]);
 }
 
 export async function updateAvatar(db, id, avatar) {

@@ -830,8 +830,21 @@ function setSignupPhotoPreview(value = "") {
 function renderSignupAvatarChoices() {
   const picker = qs("#signupAvatarPicker");
   if (!picker) return;
-  const selected = qs("#signupPhotoUrl")?.value || "";
+  const group = qs("#signupAvatarGroup");
+  const hiddenInput = qs("#signupPhotoUrl");
+  const selected = hiddenInput?.value || "";
   const choices = (Array.isArray(storeState.avatars) ? storeState.avatars : []).filter((avatar) => avatar.isActive !== false && avatar.photoUrl);
+
+  // Keep the sign-up form clean. If the admin has not added default avatars yet,
+  // do not show the large empty avatar picker box.
+  if (!choices.length) {
+    if (hiddenInput) hiddenInput.value = "";
+    if (group) group.hidden = true;
+    picker.innerHTML = "";
+    return;
+  }
+
+  if (group) group.hidden = false;
   picker.innerHTML = `
     <button class="avatar-choice none-choice${selected ? "" : " is-selected"}" type="button" data-avatar-choice="" aria-pressed="${selected ? "false" : "true"}">
       <span class="avatar-choice-empty">No photo</span>

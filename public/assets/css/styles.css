@@ -9717,3 +9717,27 @@ html[data-theme="dark"] .hospital-doctor-option,
 html[data-theme="dark"] .hospital-doctors-section {
   background: rgba(15,23,42,.78);
 }
+
+
+/* Signup avatar picker fix: hide the empty profile-photo block cleanly when no admin avatars exist. */
+.signup-avatar-group[hidden],
+#signupAvatarGroup[hidden] {
+  display: none !important;
+}
+.signup-avatar-group .avatar-choice-grid {
+  grid-template-columns: repeat(auto-fill, minmax(76px, 92px));
+  align-items: start;
+  justify-content: start;
+  min-height: 0;
+}
+.signup-avatar-group .avatar-choice {
+  max-width: 92px;
+}
+@media (max-width: 560px) {
+  .signup-avatar-group .avatar-choice-grid {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+  .signup-avatar-group .avatar-choice {
+    max-width: none;
+  }
+}
