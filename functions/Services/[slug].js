@@ -57,7 +57,7 @@ const servicePageHtml = `<!doctype html>
         </div>
       </section>
     </main>
-    <footer class="site-footer"><div class="container footer-grid"><div class="brand"><img src="/assets/img/logo.png" alt="" width="44" height="44" loading="lazy" /><span><span class="brand-mark" data-site-name>Medicare At Home</span><span class="brand-subtitle" data-footer-location>Sultanpur, Feni, Bangladesh</span></span></div><p class="footer-credit">Made With <span aria-hidden="true">❤️‍🩹</span> By <a href="https://t.me/Ch0wdhury_Siam" target="_blank" rel="noopener noreferrer">Siam Chowdhury</a></p></div></footer>
+    <footer class="site-footer"><div class="container footer-grid"><div class="brand"><img src="/assets/img/logo.png" alt="" width="44" height="44" loading="lazy" /><span><span class="brand-mark" data-site-name>Medicare At Home</span><span class="brand-subtitle" data-footer-location>Sultanpur, Feni, Bangladesh</span></span></div></div></footer>
     </div>
 
     <div class="toast" id="toast" aria-live="polite" aria-atomic="true"></div>

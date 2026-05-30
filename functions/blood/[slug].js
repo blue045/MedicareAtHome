@@ -82,7 +82,6 @@ const bloodPageHtml = `<!doctype html>
             <span class="brand-subtitle" data-footer-location>Sultanpur, Feni, Bangladesh</span>
           </span>
         </div>
-        <p class="footer-credit">Made With <span aria-hidden="true">❤️‍🩹</span> By <a href="https://t.me/Ch0wdhury_Siam" target="_blank" rel="noopener noreferrer">Siam Chowdhury</a></p>
       </div>
     </footer>
 

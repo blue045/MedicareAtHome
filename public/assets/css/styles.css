@@ -2616,24 +2616,8 @@ html[data-theme="dark"] .doctor-page-card {
   font-weight: 800;
 }
 
-.footer-credit {
-  margin: 0;
-  color: var(--muted);
-  font-weight: 850;
-  letter-spacing: -0.015em;
-}
 
-.footer-credit a {
-  color: var(--heading);
-  font-weight: 950;
-  border-bottom: 2px solid rgba(41, 201, 143, 0.45);
-}
 
-.footer-credit a:hover,
-.footer-credit a:focus-visible {
-  color: var(--brand);
-  outline: none;
-}
 
 html[data-theme="dark"] .doctor-save-bar,
 html[data-theme="dark"] .services-preview {
@@ -2692,9 +2676,6 @@ html[data-theme="dark"] .service-admin-emoji {
   box-shadow: 0 16px 34px rgba(45, 173, 188, 0.12);
 }
 
-html[data-theme="dark"] .footer-credit a {
-  color: #f4fbf8;
-}
 
 @media (max-width: 1050px) {
   .admin-dashboard-grid,
@@ -2730,11 +2711,6 @@ html[data-theme="dark"] .footer-credit a {
   .doctor-save-bar .btn,
   .doctor-save-bar .small-btn {
     width: 100%;
-  }
-
-  .footer-credit {
-    width: 100%;
-    font-size: 0.95rem;
   }
 }
 
@@ -4859,7 +4835,6 @@ html[data-theme="dark"] .admin-shell { background: linear-gradient(180deg, #080b
 /* Footer */
 .site-footer { padding: 34px 0 46px !important; }
 .footer-grid { background: #fff !important; border: 1px solid var(--border) !important; border-radius: 24px !important; box-shadow: none !important; }
-.footer-credit a { color: var(--accent-strong) !important; border-color: rgba(59,99,255,.26) !important; }
 
 /* Dark cards */
 html[data-theme="dark"] .spacebook-preview-card,
@@ -5029,9 +5004,6 @@ html[data-theme="dark"] .optional-label {
 }
 
 html[data-theme="dark"] .auth-page-switch a,
-html[data-theme="dark"] .footer-credit a {
-  color: #8fb2ff !important;
-}
 
 html[data-theme="dark"] .notice {
   background: rgba(247, 144, 9, 0.12) !important;
