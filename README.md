@@ -478,7 +478,7 @@ A good setup order after deployment:
 
 1. Open `/su`.
 2. Check the Dashboard.
-3. Update Main Page settings.
+3. Open Content Pages → Main Page and update the homepage content.
 4. Open Content Pages and update page text for Services, Store, Doctors, Ambulance, Hospital, Blood, Contact, and About.
 5. Add services.
 6. Add doctors.

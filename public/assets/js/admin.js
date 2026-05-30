@@ -2,7 +2,7 @@ const panelRoot = window.location.pathname.split("/").filter(Boolean)[0] === "su
 const panelMode = panelRoot === "/su" ? "master" : "sub";
 const tokenKey = panelMode === "master" ? "medicare_master_admin_token" : "medicare_sub_admin_token";
 const adminPageKey = panelMode === "master" ? "medicare_master_admin_active_page" : "medicare_sub_admin_active_page";
-const validAdminPages = ["dashboard", "main", "content", "about", "doctors", "ambulance", "hospitals", "blood", "bloodDetail", "services", "products", "orders", "store-users", "comments", "contact", "sub-admins"];
+const validAdminPages = ["dashboard", "content", "about", "doctors", "ambulance", "hospitals", "blood", "bloodDetail", "services", "products", "orders", "store-users", "comments", "contact", "sub-admins"];
 
 function getSavedAdminPage() {
   try {
@@ -225,7 +225,7 @@ const state = {
   subAdmins: [],
   aboutProfiles: [],
   aboutPosts: [],
-  activeContentPage: "services"
+  activeContentPage: "main"
 };
 
 const contentPageFields = [
@@ -264,6 +264,7 @@ const contentPageFields = [
 const contentPageDefaults = Object.fromEntries(contentPageFields.map(([key]) => [key, ""]));
 
 const editableContentPages = [
+  { key: "main", label: "Main Page", icon: "⌂", path: "/", title: "heroTitleLine", copy: "description", badge: "heroHighlight", primaryLabelField: "primaryButtonText", secondaryLabelField: "ambulanceButtonText" },
   { key: "services", label: "Services", icon: "🩺", path: "/Services", nav: "navServicesLabel", title: "servicesPageTitle", copy: "servicesPageCopy" },
   { key: "store", label: "Store", icon: "🛒", path: "/Store", nav: "navStoreLabel", title: "storePageTitle", copy: "storePageCopy" },
   { key: "doctors", label: "Doctors", icon: "👨‍⚕️", path: "/Doctors", nav: "navDoctorsLabel", title: "doctorsPageTitle", copy: "doctorsPageCopy" },
@@ -953,7 +954,7 @@ async function api(url, options = {}) {
 function permissionForPage(page = "dashboard") {
   const map = {
     dashboard: "dashboard",
-    main: "main",
+    main: "content",
     content: "content",
     about: "content",
     doctors: "doctors",
@@ -976,6 +977,7 @@ function hasAccess(page = "dashboard") {
   const permission = permissionForPage(page);
   if (state.isMaster) return true;
   if (permission === "master") return false;
+  if (permission === "content" && state.permissions.includes("main")) return true;
   return state.permissions.includes(permission);
 }
 
@@ -1047,9 +1049,13 @@ function pageFromLocation() {
   }
   if (parts[0] === panelRoot.slice(1) && parts[1]) {
     const page = parts[1].toLowerCase();
+    if (page === "main") {
+      state.activeContentPage = "main";
+      return "content";
+    }
     if (page === "content") {
       const contentKey = contentPageFromLocation();
-      state.activeContentPage = contentKey || "services";
+      state.activeContentPage = contentKey || "main";
       return "content";
     }
     const normalizedPage = page === "reviews" ? "comments" : page;
@@ -1089,7 +1095,6 @@ function setAdminPage(page, updateUrl = false) {
   if (title) {
     const names = {
       dashboard: "Dashboard",
-      main: "Main Page",
       content: "Content Pages",
       about: "About & Blog",
       doctors: "Doctors",
@@ -1167,7 +1172,7 @@ async function loadAdminData() {
   }
 
   try {
-    if (["main", "content", "services", "contact"].includes(page)) {
+    if (["content", "services", "contact"].includes(page)) {
       const settingsData = await api("/api/settings");
       state.settings = settingsData.settings || {};
       fillMainPageForm();
@@ -1810,15 +1815,15 @@ async function saveDoctor(event) {
 
 function fillMainPageForm() {
   const settings = state.settings || {};
-  qs("#siteName").value = settings.siteName || "";
-  qs("#heroHighlight").value = settings.heroHighlight || "Medical care";
-  qs("#heroTitleLine").value = settings.heroTitleLine || "at your home.";
-  qs("#description").value = settings.description || "";
-  qs("#primaryButtonText").value = settings.primaryButtonText || "WhatsApp Appointment";
-  qs("#secondaryButtonText").value = settings.secondaryButtonText || "View Doctors";
-  qs("#servicesButtonText").value = settings.servicesButtonText || "Services";
-  qs("#contactButtonText").value = settings.contactButtonText || "Contact";
-  qs("#statsSetting").value = formatStats(settings.stats || []);
+  if (qs("#siteName")) qs("#siteName").value = settings.siteName || "";
+  if (qs("#heroHighlight")) qs("#heroHighlight").value = settings.heroHighlight || "Medical care";
+  if (qs("#heroTitleLine")) qs("#heroTitleLine").value = settings.heroTitleLine || "at your home.";
+  if (qs("#description")) qs("#description").value = settings.description || "";
+  if (qs("#primaryButtonText")) qs("#primaryButtonText").value = settings.primaryButtonText || "WhatsApp Appointment";
+  if (qs("#secondaryButtonText")) qs("#secondaryButtonText").value = settings.secondaryButtonText || "View Doctors";
+  if (qs("#servicesButtonText")) qs("#servicesButtonText").value = settings.servicesButtonText || "Services";
+  if (qs("#contactButtonText")) qs("#contactButtonText").value = settings.contactButtonText || "Contact";
+  if (qs("#statsSetting")) qs("#statsSetting").value = formatStats(settings.stats || []);
 }
 
 function parseContentBlocks(value = "") {
@@ -1849,10 +1854,10 @@ function formatContentBlocks(blocks = []) {
 function normalizeAdminPageContentEntry(page, settings = state.settings) {
   const stored = settings?.pageContent && typeof settings.pageContent === "object" ? settings.pageContent[page.key] || {} : {};
   return {
-    label: stored.label || settings?.[page.nav] || page.label,
-    badge: stored.badge || page.label,
-    title: stored.title || settings?.[page.title] || page.label,
-    copy: stored.copy || settings?.[page.copy] || "",
+    label: stored.label || (page.nav ? settings?.[page.nav] : "") || page.label,
+    badge: stored.badge || (page.badge ? settings?.[page.badge] : "") || page.label,
+    title: stored.title || (page.title ? settings?.[page.title] : "") || page.label,
+    copy: stored.copy || (page.copy ? settings?.[page.copy] : "") || "",
     body: stored.body || "",
     bannerImage: stored.bannerImage || "",
     noticeTitle: stored.noticeTitle || "",
@@ -1861,9 +1866,9 @@ function normalizeAdminPageContentEntry(page, settings = state.settings) {
     listCopy: stored.listCopy || "",
     bottomNote: stored.bottomNote || "",
     blocks: Array.isArray(stored.blocks) ? stored.blocks : [],
-    primaryLabel: stored.primaryLabel || "",
+    primaryLabel: stored.primaryLabel || (page.primaryLabelField ? settings?.[page.primaryLabelField] : "") || "",
     primaryUrl: stored.primaryUrl || "",
-    secondaryLabel: stored.secondaryLabel || "",
+    secondaryLabel: stored.secondaryLabel || (page.secondaryLabelField ? settings?.[page.secondaryLabelField] : "") || "",
     secondaryUrl: stored.secondaryUrl || "",
     layout: stored.layout || "standard",
     hidden: stored.hidden === true,
@@ -1927,7 +1932,7 @@ function renderContentPageCards() {
 function showContentPageOverview(updateUrl = false) {
   const grid = qs("#contentPagesOverview");
   const form = qs("#contentPageForm");
-  state.activeContentPage = "services";
+  state.activeContentPage = "main";
   if (grid) grid.hidden = false;
   if (form) form.hidden = true;
   const title = qs("#adminCurrentPageTitle");
@@ -2049,9 +2054,12 @@ function contentPagesPayload() {
 
   editableContentPages.forEach((page) => {
     const entry = pageContent[page.key] || {};
-    payload[page.nav] = entry.label || settings[page.nav] || page.label;
-    payload[page.title] = entry.title || settings[page.title] || page.label;
-    payload[page.copy] = entry.copy || settings[page.copy] || "";
+    if (page.nav) payload[page.nav] = entry.label || settings[page.nav] || page.label;
+    if (page.badge) payload[page.badge] = entry.badge || settings[page.badge] || "";
+    if (page.title) payload[page.title] = entry.title || settings[page.title] || page.label;
+    if (page.copy) payload[page.copy] = entry.copy || settings[page.copy] || "";
+    if (page.primaryLabelField) payload[page.primaryLabelField] = entry.primaryLabel || settings[page.primaryLabelField] || "";
+    if (page.secondaryLabelField) payload[page.secondaryLabelField] = entry.secondaryLabel || settings[page.secondaryLabelField] || "";
   });
   payload.pageContent = pageContent;
   return payload;
@@ -2786,7 +2794,7 @@ async function bootstrapAdminSession() {
 function renderPermissionCheckboxes(container, selected = []) {
   if (!container) return;
   const modules = state.adminModules.length ? state.adminModules : [
-    { key: "dashboard", label: "Dashboard" }, { key: "main", label: "Main Page" }, { key: "content", label: "Content Pages" },
+    { key: "dashboard", label: "Dashboard" }, { key: "content", label: "Content Pages" },
     { key: "contact", label: "Contact Settings" }, { key: "blood", label: "Blood" }, { key: "ambulance", label: "Ambulance" },
     { key: "doctors", label: "Doctors" }, { key: "comments", label: "User Reviews" }, { key: "store-users", label: "User Login Information" },
     { key: "orders", label: "Order Details" }, { key: "products", label: "Add Products" }, { key: "services", label: "Services" }
@@ -3209,13 +3217,6 @@ function bindEvents() {
     }
   });
 
-  qs("#mainPageForm")?.addEventListener("submit", async (event) => {
-    try {
-      await saveMainPage(event);
-    } catch (error) {
-      toast(error.message || "Could not save main page.");
-    }
-  });
 
   qs("#contentPageForm")?.addEventListener("submit", async (event) => {
     try {

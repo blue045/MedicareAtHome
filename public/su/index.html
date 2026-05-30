@@ -16,7 +16,7 @@
         }
       })();
     </script>
-    <link rel="stylesheet" href="/assets/css/styles.css?v=full-page-editor-v1" />
+    <link rel="stylesheet" href="/assets/css/styles.css?v=main-in-content-v1" />
     <link rel="icon" href="/assets/img/logo.png" type="image/png" />
   </head>
   <body class="superuser-body">
@@ -72,7 +72,6 @@
           <nav class="sidebar-group" aria-label="Admin navigation">
             <span class="sidebar-label">Manage</span>
             <a class="sidebar-link is-active" href="/su" data-admin-nav="dashboard" data-permission="dashboard"><span>⌂</span>Dashboard</a>
-            <a class="sidebar-link" href="/su/main" data-admin-nav="main" data-permission="main"><span>▣</span>Main Page</a>
             <a class="sidebar-link" href="/su/services" data-admin-nav="services" data-permission="services"><span>✚</span>Services</a>
             <a class="sidebar-link" href="/su/products" data-admin-nav="products" data-permission="products"><span>🛒</span>Add Products</a>
             <a class="sidebar-link" href="/su/orders" data-admin-nav="orders" data-permission="orders"><span>📦</span>Order Details</a>
@@ -119,7 +118,6 @@
                 <p class="section-copy">Use the header Menu or the shortcuts below to edit the homepage, page content, doctor profiles, blood approvals, products, orders, reviews and contact numbers. Doctor and service changes stay pending until you press Save Changes.</p>
                 <div class="quick-actions admin-quick-guide-actions">
                   <a class="btn btn-primary" href="/su" data-admin-nav="dashboard" data-permission="dashboard">Dashboard</a>
-                  <a class="btn btn-ghost" href="/su/main" data-admin-nav="main" data-permission="main">Main Page</a>
                   <a class="btn btn-ghost" href="/su/services" data-admin-nav="services" data-permission="services">Edit Services</a>
                   <a class="btn btn-ghost" href="/su/products" data-admin-nav="products" data-permission="products">Add Products</a>
                   <a class="btn btn-ghost" href="/su/orders" data-admin-nav="orders" data-permission="orders">Order Details</a>
@@ -142,57 +140,6 @@
               </article>
             </div>
           </section>
-
-          <section class="admin-page" data-admin-page="main">
-            <section class="admin-card main-page-card">
-              <p class="section-kicker">Main Page</p>
-              <h2>Edit homepage content</h2>
-              <p class="section-copy">Change the hero title, description, buttons and homepage stat cards.</p>
-              <form id="mainPageForm" class="form-grid">
-                <div class="form-group full">
-                  <label for="siteName">Website Name</label>
-                  <input class="form-input" id="siteName" placeholder="Medicare At Home" />
-                </div>
-                <div class="form-group">
-                  <label for="heroHighlight">Main Title Highlight</label>
-                  <input class="form-input" id="heroHighlight" placeholder="Medical care" />
-                </div>
-                <div class="form-group">
-                  <label for="heroTitleLine">Main Title Second Line</label>
-                  <input class="form-input" id="heroTitleLine" placeholder="at your home." />
-                </div>
-                <div class="form-group full">
-                  <label for="description">Main Page Description</label>
-                  <textarea class="form-textarea" id="description" placeholder="Write the homepage description."></textarea>
-                </div>
-                <div class="form-group">
-                  <label for="primaryButtonText">WhatsApp Button Text</label>
-                  <input class="form-input" id="primaryButtonText" placeholder="WhatsApp Appointment" />
-                </div>
-                <div class="form-group">
-                  <label for="secondaryButtonText">Doctors Button Text</label>
-                  <input class="form-input" id="secondaryButtonText" placeholder="View Doctors" />
-                </div>
-                <div class="form-group">
-                  <label for="servicesButtonText">Services Button Text</label>
-                  <input class="form-input" id="servicesButtonText" placeholder="Services" />
-                </div>
-                <div class="form-group">
-                  <label for="contactButtonText">Contact Button Text</label>
-                  <input class="form-input" id="contactButtonText" placeholder="Contact" />
-                </div>
-                <div class="form-group full">
-                  <label for="statsSetting">Homepage Stat Cards</label>
-                  <textarea class="form-textarea" id="statsSetting" placeholder="24/7 | Contact support&#10;5+ | Home care services&#10;3 | Contact numbers&#10;Fast | WhatsApp response"></textarea>
-                  <small class="form-help">Write one stat per line using: value | label</small>
-                </div>
-                <div class="form-actions full">
-                  <button class="btn btn-primary" type="submit">Save Main Page</button>
-                </div>
-              </form>
-            </section>
-          </section>
-
           <section class="admin-page" data-admin-page="content">
             <section class="admin-card main-page-card content-management-card">
               <p class="section-kicker">Content Pages</p>
@@ -805,6 +752,6 @@
     </main>
 
     <div class="toast" id="toast" aria-live="polite" aria-atomic="true"></div>
-    <script type="module" src="/assets/js/admin.js?v=full-page-editor-v1"></script>
+    <script type="module" src="/assets/js/admin.js?v=main-in-content-v1"></script>
   </body>
 </html>

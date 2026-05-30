@@ -38,7 +38,7 @@ function cleanPhone(value) {
 
 const FIXED_DOCTOR_CONTACT = "+8801609672748";
 
-const editablePageKeys = new Set(["services", "store", "doctors", "ambulance", "hospital", "blood", "contact", "about"]);
+const editablePageKeys = new Set(["main", "services", "store", "doctors", "ambulance", "hospital", "blood", "contact", "about"]);
 const pageLayoutKeys = new Set(["standard", "compact", "wide", "split", "cards-first"]);
 
 function cleanUrl(value, max = 500) {

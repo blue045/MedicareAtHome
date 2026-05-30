@@ -3,7 +3,6 @@ import { constantTimeEqual, hashPasswordPbkdf2, isPbkdf2Hash, requiredSecret, sh
 
 export const ADMIN_MODULES = [
   { key: "dashboard", label: "Dashboard" },
-  { key: "main", label: "Main Page" },
   { key: "content", label: "Content Pages" },
   { key: "contact", label: "Contact Settings" },
   { key: "blood", label: "Blood" },
@@ -26,6 +25,7 @@ function cleanText(value = "", max = 180) {
 export function normalizePermissionKey(value = "") {
   const key = cleanText(value, 40).toLowerCase();
   if (key === "reviews") return "comments";
+  if (key === "main") return "content";
   if (key === "hospital") return "hospitals";
   if (key === "add-products") return "products";
   if (key === "user-reviews") return "comments";

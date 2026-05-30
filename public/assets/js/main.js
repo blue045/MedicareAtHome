@@ -934,6 +934,7 @@ function renderBranding() {
 
 function editablePageContentFor(pageKey, settings = state.settings) {
   const map = {
+    "Main Page": ["main", "heroTitleLine", "description"],
     Services: ["services", "servicesPageTitle", "servicesPageCopy"],
     Store: ["store", "storePageTitle", "storePageCopy"],
     Doctors: ["doctors", "doctorsPageTitle", "doctorsPageCopy"],
@@ -960,7 +961,7 @@ function editablePageContentFor(pageKey, settings = state.settings) {
     key: contentKey,
     title: titleText,
     copy: copyText,
-    badge: custom.badge || "",
+    badge: custom.badge || (contentKey === "main" ? settings.heroHighlight || fallbackSettings.heroHighlight : ""),
     body: custom.body || "",
     bannerImage: custom.bannerImage || "",
     noticeTitle: custom.noticeTitle || "",
@@ -981,6 +982,7 @@ function editablePageContentFor(pageKey, settings = state.settings) {
 
 function pageDefaultModuleSelectors(pageKey) {
   return {
+    main: ["#doctorAppointmentForm", ".spacebook-hero .hero-actions", ".stats-showcase"],
     services: ["#servicesGrid"],
     store: [".store-hub-grid"],
     doctors: [".doctor-search-bar", "#doctorsGrid"],
@@ -1020,11 +1022,18 @@ function renderEditablePageText(settings = state.settings) {
 
   const title = qs("[data-editable-page-title]") || qs("main .section-title");
   const copy = qs("[data-editable-page-copy]") || qs("main .section-copy");
-  if (title && content.title) title.textContent = content.title;
+  if (content.key === "main") {
+    const heroHighlight = qs("[data-hero-highlight]");
+    const heroTitleLine = qs("[data-hero-title-line]");
+    if (heroHighlight && content.badge) heroHighlight.textContent = content.badge;
+    if (heroTitleLine && content.title) heroTitleLine.textContent = content.title;
+  } else if (title && content.title) {
+    title.textContent = content.title;
+  }
   if (copy && content.copy) copy.textContent = content.copy;
 
   const firstKicker = qs("main .section-kicker");
-  if (firstKicker && content.badge) firstKicker.textContent = content.badge;
+  if (firstKicker && content.badge && content.key !== "main") firstKicker.textContent = content.badge;
 
   document.body.classList.remove("page-layout-standard", "page-layout-compact", "page-layout-wide", "page-layout-split", "page-layout-cards-first");
   document.body.classList.add(`page-layout-${content.layout || "standard"}`);
@@ -1041,13 +1050,15 @@ function renderEditablePageText(settings = state.settings) {
 
   const actions = ensureAdminBlock(anchor, '[data-admin-page-actions="true"]', "hero-actions page-admin-actions");
   const buttons = [];
-  if (content.primaryLabel) {
-    const href = content.primaryUrl || "/Contact";
-    buttons.push(`<a class="btn btn-primary" href="${escapeHtml(href)}">${escapeHtml(content.primaryLabel)}</a>`);
-  }
-  if (content.secondaryLabel) {
-    const href = content.secondaryUrl || "/Contact";
-    buttons.push(`<a class="btn btn-ghost" href="${escapeHtml(href)}">${escapeHtml(content.secondaryLabel)}</a>`);
+  if (content.key !== "main") {
+    if (content.primaryLabel) {
+      const href = content.primaryUrl || "/Contact";
+      buttons.push(`<a class="btn btn-primary" href="${escapeHtml(href)}">${escapeHtml(content.primaryLabel)}</a>`);
+    }
+    if (content.secondaryLabel) {
+      const href = content.secondaryUrl || "/Contact";
+      buttons.push(`<a class="btn btn-ghost" href="${escapeHtml(href)}">${escapeHtml(content.secondaryLabel)}</a>`);
+    }
   }
   actions.innerHTML = buttons.join("");
   actions.hidden = buttons.length === 0;
