@@ -8,7 +8,7 @@ export async function onRequestGet({ env, request }) {
   try {
     const db = await getDb(env);
     const url = new URL(request.url);
-    const includeInactive = url.searchParams.get("includeInactive") === "true" && await isAdmin(request, env, "doctors");
+    const includeInactive = url.searchParams.get("includeInactive") === "true" && ((await isAdmin(request, env, "doctors")) || (await isAdmin(request, env, "hospitals")));
     const doctors = await listDoctors(db, includeInactive);
 
     return json({ doctors: doctors.map(toPublicDoctor) }, { headers: includeInactive ? {} : { "cache-control": "public, max-age=60, stale-while-revalidate=300" } });

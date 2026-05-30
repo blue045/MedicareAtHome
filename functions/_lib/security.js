@@ -144,7 +144,7 @@ export async function createVerificationToken(db, userId, env = {}) {
   )`);
   await db.execute("CREATE INDEX IF NOT EXISTS idx_store_email_verify_user ON store_email_verification_tokens (userId, expiresAt)");
   const token = randomHex(32);
-  const secret = requiredSecret(env, ["STORE_AUTH_SECRET"], "STORE_AUTH_SECRET", 16);
+  const secret = requiredSecret(env, ["STORE_AUTH_SECRET", "ADMIN_SESSION_SECRET", "STORE_TURSO_AUTH_TOKEN", "STORE_LIBSQL_AUTH_TOKEN", "TURSO_AUTH_TOKEN", "LIBSQL_AUTH_TOKEN"], "STORE_AUTH_SECRET or ADMIN_SESSION_SECRET", 16);
   const tokenHash = await hmacHex(token, secret);
   const now = new Date();
   const expiresAt = new Date(now.getTime() + 1000 * 60 * 60 * 24).toISOString();
@@ -155,7 +155,7 @@ export async function createVerificationToken(db, userId, env = {}) {
 export async function verifyEmailTokenInDb(db, token, env = {}) {
   const cleanToken = cleanEnv(token);
   if (!cleanToken) return { ok: false, error: "Verification token is missing." };
-  const secret = requiredSecret(env, ["STORE_AUTH_SECRET"], "STORE_AUTH_SECRET", 16);
+  const secret = requiredSecret(env, ["STORE_AUTH_SECRET", "ADMIN_SESSION_SECRET", "STORE_TURSO_AUTH_TOKEN", "STORE_LIBSQL_AUTH_TOKEN", "TURSO_AUTH_TOKEN", "LIBSQL_AUTH_TOKEN"], "STORE_AUTH_SECRET or ADMIN_SESSION_SECRET", 16);
   const tokenHash = await hmacHex(cleanToken, secret);
   const result = await db.execute({ sql: "SELECT * FROM store_email_verification_tokens WHERE tokenHash = ? LIMIT 1", args: [tokenHash] });
   const row = result.rows?.[0];

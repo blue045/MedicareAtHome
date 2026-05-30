@@ -1198,8 +1198,13 @@ async function loadAdminData() {
     }
 
     if (page === "hospitals") {
-      const hospitalsData = await api("/api/hospitals?includeInactive=true");
+      const [hospitalsData, doctorsData] = await Promise.all([
+        api("/api/hospitals?includeInactive=true"),
+        api("/api/doctors?includeInactive=true").catch(() => api("/api/doctors").catch(() => ({ doctors: [] })))
+      ]);
       state.hospitals = hospitalsData.hospitals || [];
+      state.doctors = doctorsData.doctors || [];
+      renderHospitalDoctorPicker();
       renderHospitalAdminList();
       return;
     }
@@ -2989,6 +2994,45 @@ function setHospitalGalleryPreview(items = []) {
   preview.innerHTML = photos.length ? photos.map((photo)=>`<span class="mini-photo-thumb"><img src="${escapeHtml(photo)}" alt="Hospital gallery photo" loading="lazy" /></span>`).join("") : `<span class="form-help">No gallery photos selected</span>`;
 }
 
+function getSelectedHospitalDoctorIds() {
+  return [...document.querySelectorAll("#hospitalDoctorPicker input[data-hospital-doctor-id]:checked")]
+    .map((input) => String(input.dataset.hospitalDoctorId || "").trim())
+    .filter(Boolean);
+}
+
+function setSelectedHospitalDoctorIds(ids = []) {
+  const selected = new Set((Array.isArray(ids) ? ids : []).map((id) => String(id || "")));
+  document.querySelectorAll("#hospitalDoctorPicker input[data-hospital-doctor-id]").forEach((input) => {
+    input.checked = selected.has(String(input.dataset.hospitalDoctorId || ""));
+  });
+}
+
+function renderHospitalDoctorPicker(selectedIds = getSelectedHospitalDoctorIds()) {
+  const picker = qs("#hospitalDoctorPicker");
+  if (!picker) return;
+  const doctors = (Array.isArray(state.doctors) ? state.doctors : [])
+    .slice()
+    .sort((a, b) => (Number(a.sortOrder) || 99) - (Number(b.sortOrder) || 99));
+  if (!doctors.length) {
+    picker.innerHTML = `<div class="empty-state small-empty">No doctors found. Add doctor cards first, then come back to assign them.</div>`;
+    return;
+  }
+  const selected = new Set((Array.isArray(selectedIds) ? selectedIds : []).map((id) => String(id || "")));
+  picker.innerHTML = doctors.map((doctor) => {
+    const id = String(doctor.id || "");
+    const designation = [doctor.designation || "", doctor.designationNote ? `(${doctor.designationNote})` : ""].filter(Boolean).join(" ");
+    return `
+      <label class="hospital-doctor-option">
+        <input type="checkbox" data-hospital-doctor-id="${escapeHtml(id)}" ${selected.has(id) ? "checked" : ""} />
+        <span>
+          <strong>${escapeHtml(doctor.name || "Doctor")}</strong>
+          <small>${escapeHtml([designation, doctor.specialty || "", doctor.hospital || ""].filter(Boolean).join(" • "))}</small>
+        </span>
+      </label>
+    `;
+  }).join("");
+}
+
 function resetHospitalForm() {
   ["hospitalId", "hospitalName", "hospitalPhotoUrl", "hospitalGalleryPhotos", "hospitalAddress", "hospitalPhone", "hospitalWhatsapp", "hospitalDescription", "hospitalServices"].forEach((id)=>{ const el=qs(`#${id}`); if(el) el.value=""; });
   if (qs("#hospitalSortOrder")) qs("#hospitalSortOrder").value = "99";
@@ -2998,6 +3042,7 @@ function resetHospitalForm() {
   const galleryUpload = qs("#hospitalGalleryUpload"); if (galleryUpload) galleryUpload.value = "";
   setHospitalPhotoPreview("");
   setHospitalGalleryPreview([]);
+  renderHospitalDoctorPicker([]);
 }
 
 function fillHospitalForm(item = {}) {
@@ -3017,6 +3062,7 @@ function fillHospitalForm(item = {}) {
   if (qs("#hospitalIsActive")) qs("#hospitalIsActive").checked = item.isActive !== false;
   setHospitalPhotoPreview(item.photoUrl || "");
   setCurrentHospitalGalleryPhotos(item.galleryPhotos || []);
+  renderHospitalDoctorPicker(item.doctorIds || []);
   qs("#hospitalForm")?.scrollIntoView({ behavior: "smooth", block: "start" });
 }
 
@@ -3025,6 +3071,7 @@ function hospitalPayload() {
     name: qs("#hospitalName")?.value.trim() || "",
     photoUrl: cleanServiceMedia(qs("#hospitalPhotoUrl")?.value || ""),
     galleryPhotos: getCurrentHospitalGalleryPhotos(),
+    doctorIds: getSelectedHospitalDoctorIds(),
     address: qs("#hospitalAddress")?.value.trim() || "",
     phone: qs("#hospitalPhone")?.value.trim() || "",
     whatsapp: qs("#hospitalWhatsapp")?.value.trim() || "",
@@ -3043,7 +3090,7 @@ function renderHospitalAdminList() {
     <article class="admin-list-item admin-service-item">
       <div class="admin-service-summary">
         ${serviceVisualMarkup(item.photoUrl || "🏥", item.name || "Hospital", "service-admin-photo")}
-        <div><strong>${escapeHtml(item.name || "Hospital")}</strong><p>${escapeHtml(item.address || item.phone || "No details added.")} • ${item.isActive === false ? "Hidden" : "Visible"}</p></div>
+        <div><strong>${escapeHtml(item.name || "Hospital")}</strong><p>${escapeHtml(item.address || item.phone || "No details added.")} • ${(Array.isArray(item.doctorIds) ? item.doctorIds.length : 0)} doctor${(Array.isArray(item.doctorIds) && item.doctorIds.length === 1) ? "" : "s"} assigned • ${item.isActive === false ? "Hidden" : "Visible"}</p></div>
       </div>
       <div class="admin-list-actions"><button class="small-btn" data-hospital-edit="${escapeHtml(item.id)}" type="button">Edit</button><button class="small-btn danger-small" data-hospital-delete="${escapeHtml(item.id)}" type="button">Delete</button></div>
     </article>`).join("") : `<div class="empty-state">No hospitals added yet.</div>`;
@@ -3774,6 +3821,7 @@ setServicePhotosPreview(getCurrentServicePhotos());
 setAmbulancePhotoPreview(qs("#ambulanceEntryPhotoUrl")?.value || "");
 setHospitalPhotoPreview(qs("#hospitalPhotoUrl")?.value || "");
 setHospitalGalleryPreview(getCurrentHospitalGalleryPhotos());
+renderHospitalDoctorPicker();
 updateDesignationNoteVisibility();
 setProductPhotoPreview(qs("#productPhotoUrl")?.value || "");
 setProductAdditionalPhotosPreview(getCurrentProductAdditionalPhotos());

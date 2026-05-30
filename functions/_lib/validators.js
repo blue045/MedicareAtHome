@@ -29,6 +29,14 @@ function cleanList(value, maxItems = 12) {
     .slice(0, maxItems);
 }
 
+function cleanIdList(value, maxItems = 100) {
+  const source = Array.isArray(value) ? value : String(value || "").split(/[\s,]+/);
+  return [...new Set(source
+    .map((item) => cleanText(item, 40).replace(/[^0-9a-z_-]/gi, ""))
+    .filter(Boolean))]
+    .slice(0, maxItems);
+}
+
 function cleanPhone(value) {
   return String(value || "")
     .replace(/[^0-9+\-\s]/g, "")
@@ -414,6 +422,7 @@ export function normalizeHospital(input, existing = {}) {
     name: cleanText(input.name || safeExisting.name, 180),
     photoUrl,
     galleryPhotos: galleryPhotos.length ? galleryPhotos : (photoUrl ? [photoUrl] : []),
+    doctorIds: cleanIdList(input.doctorIds ?? safeExisting.doctorIds, 200),
     address: cleanText(input.address || safeExisting.address, 300),
     phone: cleanPhone(input.phone) || safeExisting.phone || "",
     whatsapp: cleanPhone(input.whatsapp) || safeExisting.whatsapp || "",

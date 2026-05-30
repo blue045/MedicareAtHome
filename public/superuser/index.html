@@ -16,7 +16,7 @@
         }
       })();
     </script>
-    <link rel="stylesheet" href="/assets/css/styles.css?v=empty-content-blocks-fix-v2" />
+    <link rel="stylesheet" href="/assets/css/styles.css?v=hospital-doctor-signup-fix-v1" />
     <link rel="icon" href="/assets/img/logo.png" type="image/png" />
   </head>
   <body class="superuser-body">
@@ -452,6 +452,11 @@
                   <div class="form-group full"><label for="hospitalServices">Services / Notes</label><textarea class="form-textarea" id="hospitalServices" placeholder="Available departments, emergency, ambulance, visiting hours, etc."></textarea></div>
                   <div class="form-group full"><label for="hospitalPhotoUpload">Main Photo</label><div class="photo-upload-box"><input class="form-input" id="hospitalPhotoUpload" type="file" accept="image/jpeg,image/png,image/webp" /><input id="hospitalPhotoUrl" type="hidden" /><div class="photo-preview" id="hospitalPhotoPreview">No hospital photo selected</div><button class="small-btn" id="clearHospitalPhotoButton" type="button">Remove Photo</button></div></div>
                   <div class="form-group full"><label for="hospitalGalleryUpload">Gallery Photos</label><div class="photo-upload-box"><input class="form-input" id="hospitalGalleryUpload" type="file" accept="image/jpeg,image/png,image/webp" multiple /><textarea id="hospitalGalleryPhotos" hidden></textarea><div class="mini-photo-grid" id="hospitalGalleryPreview"><span class="form-help">No gallery photos selected</span></div><button class="small-btn" id="clearHospitalGalleryButton" type="button">Remove Gallery Photos</button></div></div>
+                  <div class="form-group full">
+                    <label>Doctors available at this hospital</label>
+                    <p class="form-help">Choose doctor cards to show under this hospital detail page.</p>
+                    <div class="hospital-doctor-picker" id="hospitalDoctorPicker"><span class="form-help">Loading doctors...</span></div>
+                  </div>
                   <label class="check-row full"><input id="hospitalIsActive" type="checkbox" checked /> Show on website</label>
                   <div class="form-actions full"><button class="btn btn-primary" type="submit">Save Hospital</button><button class="btn btn-ghost" id="resetHospitalForm" type="button">Reset</button><a class="btn btn-ghost" href="/Hospital" target="_blank" rel="noopener noreferrer">View Hospital Page</a></div>
                 </form>
@@ -752,6 +757,6 @@
     </main>
 
     <div class="toast" id="toast" aria-live="polite" aria-atomic="true"></div>
-    <script type="module" src="/assets/js/admin.js?v=empty-content-blocks-fix-v2"></script>
+    <script type="module" src="/assets/js/admin.js?v=hospital-doctor-signup-fix-v1"></script>
   </body>
 </html>

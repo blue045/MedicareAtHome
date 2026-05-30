@@ -56,6 +56,12 @@ export async function onRequestPost({ request, env }) {
     if (message.includes("unique")) {
       return error("This email or phone number is already registered. Please log in.", 409);
     }
+    if (message.includes("store_auth_secret") || message.includes("admin_session_secret")) {
+      return error("Signup is not configured yet. Add STORE_AUTH_SECRET or ADMIN_SESSION_SECRET in Cloudflare Pages environment variables, then redeploy.", 500);
+    }
+    if (message.includes("missing turso") || message.includes("invalid store turso") || message.includes("invalid turso")) {
+      return error("Signup database is not configured yet. Add TURSO_DATABASE_URL and TURSO_AUTH_TOKEN, or the STORE_TURSO_DATABASE_URL and STORE_TURSO_AUTH_TOKEN pair, in Cloudflare Pages environment variables.", 500);
+    }
     return handleThrown(err);
   }
 }

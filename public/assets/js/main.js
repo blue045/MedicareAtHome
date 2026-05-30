@@ -692,7 +692,7 @@ function applyCachedPublicData(needsDoctors, needsBlood, needsHospitals, needsAm
 }
 
 async function loadData() {
-  const needsDoctors = Boolean(qs("#doctorsGrid") || qs("#doctorDetailPage") || qs("#serviceFilter") || qs("#appointmentDoctorsGrid"));
+  const needsDoctors = Boolean(qs("#doctorsGrid") || qs("#doctorDetailPage") || qs("#serviceFilter") || qs("#appointmentDoctorsGrid") || qs("#hospitalDetailPage"));
   const needsBlood = Boolean(qs("#bloodGrid") || qs("#bloodDetailPage"));
   const needsAbout = Boolean(qs("#aboutProfilesGrid") || qs("#aboutPostsGrid"));
   const needsHospitals = Boolean(qs("#hospitalGrid") || qs("#hospitalDetailPage"));
@@ -1447,6 +1447,35 @@ function renderHospitalGallery(hospital = {}, photos = []) {
   `;
 }
 
+function doctorsForHospital(hospital = {}) {
+  const assigned = new Set((Array.isArray(hospital.doctorIds) ? hospital.doctorIds : []).map((id) => String(id || "")));
+  const hospitalName = String(hospital.name || "").trim().toLowerCase();
+  const doctors = (Array.isArray(state.doctors) ? state.doctors : []).filter((doctor) => {
+    const id = String(doctor.id || "");
+    if (assigned.size) return assigned.has(id);
+    return hospitalName && String(doctor.hospital || "").trim().toLowerCase() === hospitalName;
+  });
+  return doctors.sort((a, b) => (Number(a.sortOrder) || 99) - (Number(b.sortOrder) || 99));
+}
+
+function renderHospitalDoctors(hospital = {}) {
+  const doctors = doctorsForHospital(hospital);
+  return `
+    <section class="hospital-doctors-section">
+      <div class="section-head compact-head">
+        <div>
+          <p class="section-kicker">Available doctors</p>
+          <h2 class="section-title">Doctors at ${escapeHtml(hospital.name || "this hospital")}</h2>
+          <p class="section-copy">These doctor cards are assigned from the admin panel.</p>
+        </div>
+      </div>
+      <div class="doctor-grid hospital-doctor-grid">
+        ${doctors.length ? doctors.map(renderDoctorCard).join("") : `<div class="empty-state">No doctor cards are assigned to this hospital yet.</div>`}
+      </div>
+    </section>
+  `;
+}
+
 function renderHospitalDetail(hospital = {}) {
   const photos = [hospital.photoUrl, ...(Array.isArray(hospital.galleryPhotos) ? hospital.galleryPhotos : [])]
     .map((photo) => String(photo || "").trim())
@@ -1478,6 +1507,7 @@ function renderHospitalDetail(hospital = {}) {
         </div>
       </div>
     </article>
+    ${renderHospitalDoctors(hospital)}
   `;
 }
 

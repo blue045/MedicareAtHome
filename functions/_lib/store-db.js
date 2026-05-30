@@ -144,9 +144,15 @@ function cleanPrescriptionFile(value, max = 1200000) {
 }
 
 function tokenSecret(env) {
-  // Store user sessions must use a real Cloudflare env secret.
-  // This avoids the unsafe shared default that could be forged.
-  return requiredSecret(env, ["STORE_AUTH_SECRET"], "STORE_AUTH_SECRET", 16);
+  // Prefer STORE_AUTH_SECRET, but fall back to other private Cloudflare env
+  // secrets so signup/login does not crash with a generic server error on
+  // free-plan deployments that already configured admin/db secrets.
+  return requiredSecret(
+    env,
+    ["STORE_AUTH_SECRET", "ADMIN_SESSION_SECRET", "STORE_TURSO_AUTH_TOKEN", "STORE_LIBSQL_AUTH_TOKEN", "TURSO_AUTH_TOKEN", "LIBSQL_AUTH_TOKEN"],
+    "STORE_AUTH_SECRET or ADMIN_SESSION_SECRET",
+    16
+  );
 }
 
 function allowLegacyStoreSecrets(env = {}) {
@@ -173,14 +179,14 @@ async function legacyStorePasswordHash(identifier, password, env = {}) {
 }
 
 export async function hashPassword(identifier, password, env = {}) {
-  const secret = requiredSecret(env, ["STORE_AUTH_SECRET"], "STORE_AUTH_SECRET", 16);
+  const secret = tokenSecret(env);
   const identity = loginIdentifier(identifier);
   return hashPasswordPbkdf2(identity, password, env, cleanEnv(env.STORE_PASSWORD_PEPPER || secret));
 }
 
 async function verifyStorePassword(storedHash, identifier, password, env = {}) {
   if (isPbkdf2Hash(storedHash)) {
-    const secret = requiredSecret(env, ["STORE_AUTH_SECRET"], "STORE_AUTH_SECRET", 16);
+    const secret = tokenSecret(env);
     return verifyPasswordPbkdf2(storedHash, loginIdentifier(identifier), password, env, cleanEnv(env.STORE_PASSWORD_PEPPER || secret));
   }
   const legacy = await legacyStorePasswordHash(identifier, password, env);
@@ -223,14 +229,14 @@ export async function getStoreUserFromRequest(request, env, db = null) {
 }
 
 export function getStoreTursoConfig(env) {
-  const url = cleanEnv(env.STORE_TURSO_DATABASE_URL || env.STORE_TURSO_URL || env.STORE_LIBSQL_URL);
-  const authToken = cleanEnv(env.STORE_TURSO_AUTH_TOKEN || env.STORE_LIBSQL_AUTH_TOKEN);
+  const url = cleanEnv(env.STORE_TURSO_DATABASE_URL || env.STORE_TURSO_URL || env.STORE_LIBSQL_URL || env.TURSO_DATABASE_URL || env.TURSO_URL || env.LIBSQL_URL);
+  const authToken = cleanEnv(env.STORE_TURSO_AUTH_TOKEN || env.STORE_LIBSQL_AUTH_TOKEN || env.TURSO_AUTH_TOKEN || env.LIBSQL_AUTH_TOKEN);
 
   if (!url) {
-    throw new Error("Missing separate Store Turso database URL. Add STORE_TURSO_DATABASE_URL in Cloudflare Pages environment variables.");
+    throw new Error("Missing Turso database URL. Add STORE_TURSO_DATABASE_URL or TURSO_DATABASE_URL in Cloudflare Pages environment variables.");
   }
   if (!authToken) {
-    throw new Error("Missing separate Store Turso auth token. Add STORE_TURSO_AUTH_TOKEN in Cloudflare Pages environment variables.");
+    throw new Error("Missing Turso auth token. Add STORE_TURSO_AUTH_TOKEN or TURSO_AUTH_TOKEN in Cloudflare Pages environment variables.");
   }
   if (!url.startsWith("libsql://") && !url.startsWith("https://") && !url.startsWith("http://")) {
     throw new Error("Invalid Store Turso database URL. It should look like libsql://your-store-db-your-org.turso.io");
@@ -239,13 +245,13 @@ export function getStoreTursoConfig(env) {
 }
 
 export function getStoreDbStatus(env) {
-  const url = cleanEnv(env.STORE_TURSO_DATABASE_URL || env.STORE_TURSO_URL || env.STORE_LIBSQL_URL);
-  const authToken = cleanEnv(env.STORE_TURSO_AUTH_TOKEN || env.STORE_LIBSQL_AUTH_TOKEN);
+  const url = cleanEnv(env.STORE_TURSO_DATABASE_URL || env.STORE_TURSO_URL || env.STORE_LIBSQL_URL || env.TURSO_DATABASE_URL || env.TURSO_URL || env.LIBSQL_URL);
+  const authToken = cleanEnv(env.STORE_TURSO_AUTH_TOKEN || env.STORE_LIBSQL_AUTH_TOKEN || env.TURSO_AUTH_TOKEN || env.LIBSQL_AUTH_TOKEN);
   return {
     hasDatabaseUrl: Boolean(url),
     hasAuthToken: Boolean(authToken),
-    acceptedUrlNames: ["STORE_TURSO_DATABASE_URL", "STORE_TURSO_URL", "STORE_LIBSQL_URL"],
-    acceptedTokenNames: ["STORE_TURSO_AUTH_TOKEN", "STORE_LIBSQL_AUTH_TOKEN"],
+    acceptedUrlNames: ["STORE_TURSO_DATABASE_URL", "STORE_TURSO_URL", "STORE_LIBSQL_URL", "TURSO_DATABASE_URL", "TURSO_URL", "LIBSQL_URL"],
+    acceptedTokenNames: ["STORE_TURSO_AUTH_TOKEN", "STORE_LIBSQL_AUTH_TOKEN", "TURSO_AUTH_TOKEN", "LIBSQL_AUTH_TOKEN"],
     separateFromMainDb: Boolean(url && url !== cleanEnv(env.TURSO_DATABASE_URL || env.TURSO_URL || env.LIBSQL_URL)),
     urlLooksValid: Boolean(url && (url.startsWith("libsql://") || url.startsWith("https://") || url.startsWith("http://")))
   };
