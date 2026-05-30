@@ -1012,7 +1012,13 @@ function ensureAdminBlock(anchor, selector, className) {
     if (attr) node.setAttribute(attr[1], attr[2]);
     anchor?.insertAdjacentElement("afterend", node);
   }
+  node.hidden = false;
   return node;
+}
+
+function removeAdminBlock(selector) {
+  const node = qs(selector);
+  if (node) node.remove();
 }
 
 function renderEditablePageText(settings = state.settings) {
@@ -1043,59 +1049,94 @@ function renderEditablePageText(settings = state.settings) {
   if (!host) return;
 
   let anchor = copy || title;
-  const bodyBlock = ensureAdminBlock(anchor, '[data-admin-page-body="true"]', "admin-page-body-text");
-  bodyBlock.innerHTML = content.body ? escapeHtml(content.body).replaceAll("\n", "<br />") : "";
-  bodyBlock.hidden = !content.body;
-  anchor = bodyBlock;
+  const textValue = (value) => typeof value === "string" ? value.trim() : "";
+  const bodyText = textValue(content.body);
+  const bannerImage = textValue(content.bannerImage);
+  const noticeTitle = textValue(content.noticeTitle);
+  const noticeText = textValue(content.noticeText);
+  const listTitle = textValue(content.listTitle);
+  const listCopy = textValue(content.listCopy);
+  const bottomNote = textValue(content.bottomNote);
+  const primaryLabel = textValue(content.primaryLabel);
+  const primaryUrl = textValue(content.primaryUrl);
+  const secondaryLabel = textValue(content.secondaryLabel);
+  const secondaryUrl = textValue(content.secondaryUrl);
+  const visibleBlocks = content.blocks.filter((block) => textValue(block.title) || textValue(block.copy) || textValue(block.imageUrl) || textValue(block.buttonLabel));
 
-  const actions = ensureAdminBlock(anchor, '[data-admin-page-actions="true"]', "hero-actions page-admin-actions");
+  if (bodyText) {
+    const bodyBlock = ensureAdminBlock(anchor, '[data-admin-page-body="true"]', "admin-page-body-text");
+    bodyBlock.innerHTML = escapeHtml(bodyText).replaceAll("\n", "<br />");
+    anchor = bodyBlock;
+  } else {
+    removeAdminBlock('[data-admin-page-body="true"]');
+  }
+
   const buttons = [];
   if (content.key !== "main") {
-    if (content.primaryLabel) {
-      const href = content.primaryUrl || "/Contact";
-      buttons.push(`<a class="btn btn-primary" href="${escapeHtml(href)}">${escapeHtml(content.primaryLabel)}</a>`);
+    if (primaryLabel) {
+      const href = primaryUrl || "/Contact";
+      buttons.push(`<a class="btn btn-primary" href="${escapeHtml(href)}">${escapeHtml(primaryLabel)}</a>`);
     }
-    if (content.secondaryLabel) {
-      const href = content.secondaryUrl || "/Contact";
-      buttons.push(`<a class="btn btn-ghost" href="${escapeHtml(href)}">${escapeHtml(content.secondaryLabel)}</a>`);
+    if (secondaryLabel) {
+      const href = secondaryUrl || "/Contact";
+      buttons.push(`<a class="btn btn-ghost" href="${escapeHtml(href)}">${escapeHtml(secondaryLabel)}</a>`);
     }
   }
-  actions.innerHTML = buttons.join("");
-  actions.hidden = buttons.length === 0;
-  anchor = actions;
+  if (buttons.length) {
+    const actions = ensureAdminBlock(anchor, '[data-admin-page-actions="true"]', "hero-actions page-admin-actions");
+    actions.innerHTML = buttons.join("");
+    anchor = actions;
+  } else {
+    removeAdminBlock('[data-admin-page-actions="true"]');
+  }
 
-  const banner = ensureAdminBlock(anchor, '[data-admin-page-banner="true"]', "admin-page-banner");
-  banner.innerHTML = content.bannerImage ? `<img src="${escapeHtml(content.bannerImage)}" alt="${escapeHtml(content.title || "Page image")}" loading="lazy" />` : "";
-  banner.hidden = !content.bannerImage;
-  anchor = banner;
+  if (bannerImage) {
+    const banner = ensureAdminBlock(anchor, '[data-admin-page-banner="true"]', "admin-page-banner");
+    banner.innerHTML = `<img src="${escapeHtml(bannerImage)}" alt="${escapeHtml(content.title || "Page image")}" loading="lazy" />`;
+    anchor = banner;
+  } else {
+    removeAdminBlock('[data-admin-page-banner="true"]');
+  }
 
-  const notice = ensureAdminBlock(anchor, '[data-admin-page-notice="true"]', "admin-page-notice");
-  notice.innerHTML = (content.noticeTitle || content.noticeText) ? `<strong>${escapeHtml(content.noticeTitle || "Note")}</strong><span>${escapeHtml(content.noticeText || "")}</span>` : "";
-  notice.hidden = !(content.noticeTitle || content.noticeText);
-  anchor = notice;
+  if (noticeTitle || noticeText) {
+    const notice = ensureAdminBlock(anchor, '[data-admin-page-notice="true"]', "admin-page-notice");
+    notice.innerHTML = `<strong>${escapeHtml(noticeTitle || "Note")}</strong><span>${escapeHtml(noticeText)}</span>`;
+    anchor = notice;
+  } else {
+    removeAdminBlock('[data-admin-page-notice="true"]');
+  }
 
-  const blocks = ensureAdminBlock(anchor, '[data-admin-page-blocks="true"]', "admin-page-blocks");
-  blocks.innerHTML = content.blocks.length ? content.blocks.map((block) => `
-    <article class="admin-page-block-card">
-      ${block.imageUrl ? `<img src="${escapeHtml(block.imageUrl)}" alt="${escapeHtml(block.title || "Content image")}" loading="lazy" />` : ""}
-      <div>
-        ${block.title ? `<h3>${escapeHtml(block.title)}</h3>` : ""}
-        ${block.copy ? `<p>${escapeHtml(block.copy)}</p>` : ""}
-        ${block.buttonLabel ? `<a class="btn btn-ghost" href="${escapeHtml(block.buttonUrl || "#")}">${escapeHtml(block.buttonLabel)}</a>` : ""}
-      </div>
-    </article>
-  `).join("") : "";
-  blocks.hidden = content.blocks.length === 0;
-  anchor = blocks;
+  if (visibleBlocks.length) {
+    const blocks = ensureAdminBlock(anchor, '[data-admin-page-blocks="true"]', "admin-page-blocks");
+    blocks.innerHTML = visibleBlocks.map((block) => `
+      <article class="admin-page-block-card">
+        ${block.imageUrl ? `<img src="${escapeHtml(block.imageUrl)}" alt="${escapeHtml(block.title || "Content image")}" loading="lazy" />` : ""}
+        <div>
+          ${block.title ? `<h3>${escapeHtml(block.title)}</h3>` : ""}
+          ${block.copy ? `<p>${escapeHtml(block.copy)}</p>` : ""}
+          ${block.buttonLabel ? `<a class="btn btn-ghost" href="${escapeHtml(block.buttonUrl || "#")}">${escapeHtml(block.buttonLabel)}</a>` : ""}
+        </div>
+      </article>
+    `).join("");
+    anchor = blocks;
+  } else {
+    removeAdminBlock('[data-admin-page-blocks="true"]');
+  }
 
-  const listIntro = ensureAdminBlock(anchor, '[data-admin-page-list-intro="true"]', "admin-page-list-intro");
-  listIntro.innerHTML = (content.listTitle || content.listCopy) ? `<h2>${escapeHtml(content.listTitle || "More information")}</h2><p>${escapeHtml(content.listCopy || "")}</p>` : "";
-  listIntro.hidden = !(content.listTitle || content.listCopy);
-  anchor = listIntro;
+  if (listTitle || listCopy) {
+    const listIntro = ensureAdminBlock(anchor, '[data-admin-page-list-intro="true"]', "admin-page-list-intro");
+    listIntro.innerHTML = `<h2>${escapeHtml(listTitle || "More information")}</h2><p>${escapeHtml(listCopy)}</p>`;
+    anchor = listIntro;
+  } else {
+    removeAdminBlock('[data-admin-page-list-intro="true"]');
+  }
 
-  const bottom = ensureAdminBlock(anchor, '[data-admin-page-bottom-note="true"]', "admin-page-bottom-note");
-  bottom.innerHTML = content.bottomNote ? escapeHtml(content.bottomNote).replaceAll("\n", "<br />") : "";
-  bottom.hidden = !content.bottomNote;
+  if (bottomNote) {
+    const bottom = ensureAdminBlock(anchor, '[data-admin-page-bottom-note="true"]', "admin-page-bottom-note");
+    bottom.innerHTML = escapeHtml(bottomNote).replaceAll("\n", "<br />");
+  } else {
+    removeAdminBlock('[data-admin-page-bottom-note="true"]');
+  }
 
   applyDefaultModuleVisibility(content);
 }

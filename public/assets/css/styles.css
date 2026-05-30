@@ -9647,3 +9647,23 @@ html[data-theme="dark"] .admin-page-list-intro {
     max-height: 260px;
   }
 }
+
+/* Public content editor safety: never render empty optional page blocks. */
+[hidden],
+.hidden,
+.admin-page-body-text:empty,
+.page-admin-actions:empty,
+.admin-page-banner:empty,
+.admin-page-notice:empty,
+.admin-page-blocks:empty,
+.admin-page-list-intro:empty,
+.admin-page-bottom-note:empty {
+  display: none !important;
+  padding: 0 !important;
+  margin: 0 !important;
+  border: 0 !important;
+  min-height: 0 !important;
+  height: 0 !important;
+  box-shadow: none !important;
+  background: transparent !important;
+}
