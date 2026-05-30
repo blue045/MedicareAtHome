@@ -10,7 +10,7 @@ function rateLimitError(result) {
 
 export async function onRequestPost({ request, env }) {
   try {
-    const db = await getStoreDb(env);
+    const db = await getStoreDb(env, { mode: "auth" });
     const limit = await rateLimitRequest(db, request, env, "store_signup", { limit: 5, windowSeconds: 15 * 60 });
     if (!limit.ok) return rateLimitError(limit);
 
@@ -61,6 +61,9 @@ export async function onRequestPost({ request, env }) {
     }
     if (message.includes("missing turso") || message.includes("invalid store turso") || message.includes("invalid turso")) {
       return error("Signup database is not configured yet. Add TURSO_DATABASE_URL and TURSO_AUTH_TOKEN, or the STORE_TURSO_DATABASE_URL and STORE_TURSO_AUTH_TOKEN pair, in Cloudflare Pages environment variables.", 500);
+    }
+    if (message.includes("too many subrequests")) {
+      return error("Signup is doing too much work for the Cloudflare free-plan request limit. Deploy the latest fixed build and try again in an incognito tab.", 503);
     }
     if (message.includes("sqlite_busy") || message.includes("database is locked") || message.includes("server is busy") || message.includes("temporarily unavailable") || message.includes("timeout")) {
       return error("Signup database is busy. Please wait a few seconds and try again.", 503);

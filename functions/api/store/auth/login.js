@@ -9,7 +9,7 @@ function rateLimitError(result) {
 
 export async function onRequestPost({ request, env }) {
   try {
-    const db = await getStoreDb(env);
+    const db = await getStoreDb(env, { mode: "auth" });
     const limit = await rateLimitRequest(db, request, env, "store_login", { limit: 8, windowSeconds: 15 * 60 });
     if (!limit.ok) return rateLimitError(limit);
 

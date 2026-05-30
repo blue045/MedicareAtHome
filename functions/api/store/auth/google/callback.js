@@ -18,7 +18,7 @@ export async function onRequestGet({ request, env }) {
 
     const tokenData = await exchangeGoogleCodeForToken(code, request, env);
     const profile = await fetchGoogleProfile(tokenData.access_token);
-    const db = await getStoreDb(env);
+    const db = await getStoreDb(env, { mode: "auth" });
     const { user, isNewUser, linkedExisting } = await createOrLinkGoogleUser(db, profile, env);
     const token = await createStoreToken(user, env);
 

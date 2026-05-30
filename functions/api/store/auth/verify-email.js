@@ -8,7 +8,7 @@ function htmlPage(title, message, ok = true) {
 export async function onRequestGet({ request, env }) {
   try {
     const token = new URL(request.url).searchParams.get("token") || "";
-    const db = await getStoreDb(env);
+    const db = await getStoreDb(env, { mode: "auth" });
     const result = await verifyUserEmailToken(db, token, env);
     if (!result.ok) return htmlPage("Verification failed", result.error || "Could not verify your email.", false);
     return htmlPage("Email verified", "Your email is verified. You can now log in and use your account.", true);

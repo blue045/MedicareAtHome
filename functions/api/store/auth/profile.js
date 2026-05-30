@@ -3,7 +3,7 @@ import { getStoreDb, getStoreUserFromRequest, updateUserProfile } from "../../..
 
 export async function onRequestPatch({ request, env }) {
   try {
-    const db = await getStoreDb(env);
+    const db = await getStoreDb(env, { mode: "auth" });
     const user = await getStoreUserFromRequest(request, env, db);
     if (!user) return error("Not logged in", 401);
 

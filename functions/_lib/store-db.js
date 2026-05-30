@@ -302,7 +302,7 @@ export function getStoreDbStatus(env) {
   };
 }
 
-export async function getStoreDb(env) {
+export async function getStoreDb(env, options = {}) {
   const { url, authToken } = getStoreTursoConfig(env);
   const cacheKey = `${url}::${authToken.slice(0, 12)}`;
   let client = clients.get(cacheKey);
@@ -310,9 +310,17 @@ export async function getStoreDb(env) {
     client = wrapStoreClient(createClient({ url, authToken }));
     clients.set(cacheKey, client);
   }
-  if (!initialized.has(cacheKey)) {
+
+  const schemaMode = typeof options === "string" ? options : cleanText(options.mode || "full", 24);
+  const fullInitKey = `${cacheKey}::full`;
+  const authInitKey = `${cacheKey}::auth`;
+  if (schemaMode === "auth" && !initialized.has(fullInitKey) && !initialized.has(authInitKey)) {
+    await ensureStoreAuthSchema(client);
+    initialized.add(authInitKey);
+  } else if (schemaMode !== "auth" && !initialized.has(fullInitKey)) {
     await ensureStoreSchema(client);
-    initialized.add(cacheKey);
+    initialized.add(fullInitKey);
+    initialized.add(authInitKey);
   }
   return client;
 }
@@ -326,6 +334,44 @@ async function addStoreColumn(db, table, name, definition) {
       throw error;
     }
   }
+}
+
+function normalizeSchemaStatement(statement) {
+  if (typeof statement === "string") return { sql: statement, args: [] };
+  return { ...statement, args: statement.args || [] };
+}
+
+async function runStoreSchemaBatch(db, statements = []) {
+  const list = statements.filter(Boolean).map(normalizeSchemaStatement);
+  if (!list.length) return;
+  if (typeof db.batch === "function") {
+    await db.batch(list, "write");
+    return;
+  }
+  for (const statement of list) {
+    await db.execute(statement);
+  }
+}
+
+async function safeStoreSchemaBatch(db, statements = []) {
+  const list = statements.filter(Boolean).map(normalizeSchemaStatement);
+  if (!list.length) return;
+  try {
+    await runStoreSchemaBatch(db, list);
+  } catch (error) {
+    console.warn("Store schema batch skipped/falling back:", String(error?.message || error));
+    for (const statement of list) {
+      await safeStoreSchemaExecute(db, statement);
+    }
+  }
+}
+
+async function addMissingStoreColumns(db, table, definitions = {}) {
+  const existing = await getStoreTableColumns(db, table);
+  const statements = Object.entries(definitions)
+    .filter(([name]) => !existing.has(name))
+    .map(([name, definition]) => `ALTER TABLE ${table} ADD COLUMN ${name} ${definition}`);
+  await safeStoreSchemaBatch(db, statements);
 }
 
 async function safeStoreSchemaExecute(db, statement, args = []) {
@@ -345,240 +391,299 @@ async function safeStoreSchemaExecute(db, statement, args = []) {
   }
 }
 
+async function ensureStoreAuthSchema(db) {
+  await runStoreSchemaBatch(db, [
+    `CREATE TABLE IF NOT EXISTS store_users (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      fullName TEXT NOT NULL,
+      photoUrl TEXT,
+      age INTEGER NOT NULL,
+      email TEXT NOT NULL UNIQUE,
+      phone TEXT,
+      passwordHash TEXT NOT NULL,
+      googleId TEXT,
+      authProvider TEXT DEFAULT 'password',
+      emailVerified INTEGER DEFAULT 1,
+      verifiedAt TEXT,
+      createdAt TEXT,
+      updatedAt TEXT
+    )`,
+    `CREATE TABLE IF NOT EXISTS store_avatars (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      label TEXT,
+      photoUrl TEXT NOT NULL,
+      sortOrder INTEGER DEFAULT 99,
+      isActive INTEGER DEFAULT 1,
+      createdAt TEXT,
+      updatedAt TEXT
+    )`,
+    `CREATE TABLE IF NOT EXISTS store_email_verification_tokens (
+      tokenHash TEXT PRIMARY KEY,
+      userId INTEGER NOT NULL,
+      expiresAt TEXT NOT NULL,
+      usedAt TEXT,
+      createdAt TEXT
+    )`
+  ]);
+
+  await addMissingStoreColumns(db, "store_users", {
+    fullName: "TEXT DEFAULT ''",
+    photoUrl: "TEXT",
+    age: "INTEGER DEFAULT 1",
+    email: "TEXT DEFAULT ''",
+    passwordHash: "TEXT DEFAULT ''",
+    createdAt: "TEXT",
+    updatedAt: "TEXT",
+    phone: "TEXT",
+    googleId: "TEXT",
+    authProvider: "TEXT DEFAULT 'password'",
+    emailVerified: "INTEGER DEFAULT 1",
+    verifiedAt: "TEXT"
+  });
+
+  await addMissingStoreColumns(db, "store_avatars", {
+    label: "TEXT",
+    photoUrl: "TEXT DEFAULT ''",
+    sortOrder: "INTEGER DEFAULT 99",
+    isActive: "INTEGER DEFAULT 1",
+    createdAt: "TEXT",
+    updatedAt: "TEXT"
+  });
+
+  await safeStoreSchemaBatch(db, [
+    "CREATE UNIQUE INDEX IF NOT EXISTS uniq_store_users_phone ON store_users (phone) WHERE phone IS NOT NULL AND phone != ''",
+    "CREATE UNIQUE INDEX IF NOT EXISTS uniq_store_users_google_id ON store_users (googleId) WHERE googleId IS NOT NULL AND googleId != ''",
+    "CREATE INDEX IF NOT EXISTS idx_store_avatars_active_sort ON store_avatars (isActive, sortOrder, createdAt)",
+    "CREATE INDEX IF NOT EXISTS idx_store_email_verify_user ON store_email_verification_tokens (userId, expiresAt)"
+  ]);
+}
+
 async function ensureStoreSchema(db) {
-  await db.execute(`CREATE TABLE IF NOT EXISTS store_users (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    fullName TEXT NOT NULL,
-    photoUrl TEXT,
-    age INTEGER NOT NULL,
-    email TEXT NOT NULL UNIQUE,
-    phone TEXT,
-    passwordHash TEXT NOT NULL,
-    googleId TEXT,
-    authProvider TEXT DEFAULT 'password',
-    emailVerified INTEGER DEFAULT 1,
-    verifiedAt TEXT,
-    createdAt TEXT,
-    updatedAt TEXT
-  )`);
+  await runStoreSchemaBatch(db, [
+    `CREATE TABLE IF NOT EXISTS store_users (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      fullName TEXT NOT NULL,
+      photoUrl TEXT,
+      age INTEGER NOT NULL,
+      email TEXT NOT NULL UNIQUE,
+      phone TEXT,
+      passwordHash TEXT NOT NULL,
+      googleId TEXT,
+      authProvider TEXT DEFAULT 'password',
+      emailVerified INTEGER DEFAULT 1,
+      verifiedAt TEXT,
+      createdAt TEXT,
+      updatedAt TEXT
+    )`,
+    `CREATE TABLE IF NOT EXISTS store_avatars (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      label TEXT,
+      photoUrl TEXT NOT NULL,
+      sortOrder INTEGER DEFAULT 99,
+      isActive INTEGER DEFAULT 1,
+      createdAt TEXT,
+      updatedAt TEXT
+    )`,
+    `CREATE TABLE IF NOT EXISTS store_products (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      name TEXT NOT NULL,
+      productType TEXT NOT NULL DEFAULT 'medicine',
+      photoUrl TEXT,
+      price REAL NOT NULL DEFAULT 0,
+      deliveryCharge REAL NOT NULL DEFAULT 0,
+      feniDeliveryCharge REAL NOT NULL DEFAULT 0,
+      outsideFeniDeliveryCharge REAL NOT NULL DEFAULT 0,
+      stock INTEGER NOT NULL DEFAULT 0,
+      description TEXT,
+      additionalPhotos TEXT,
+      isActive INTEGER DEFAULT 1,
+      sortOrder INTEGER DEFAULT 99,
+      createdAt TEXT,
+      updatedAt TEXT
+    )`,
+    `CREATE TABLE IF NOT EXISTS store_cart (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      userId INTEGER NOT NULL,
+      productId INTEGER NOT NULL,
+      quantity INTEGER NOT NULL DEFAULT 1,
+      createdAt TEXT,
+      updatedAt TEXT,
+      UNIQUE(userId, productId)
+    )`,
+    `CREATE TABLE IF NOT EXISTS store_orders (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      userId INTEGER NOT NULL,
+      productId INTEGER NOT NULL,
+      quantity INTEGER NOT NULL DEFAULT 1,
+      productName TEXT,
+      productPrice REAL NOT NULL DEFAULT 0,
+      deliveryCharge REAL NOT NULL DEFAULT 0,
+      customerName TEXT NOT NULL,
+      address TEXT NOT NULL,
+      deliveryLocation TEXT,
+      phone TEXT NOT NULL,
+      paymentMethod TEXT NOT NULL DEFAULT 'cod',
+      transactionId TEXT,
+      senderNumber TEXT,
+      deliveryPaymentMethod TEXT,
+      status TEXT NOT NULL DEFAULT 'pending',
+      createdAt TEXT,
+      updatedAt TEXT
+    )`,
+    `CREATE TABLE IF NOT EXISTS store_payment_settings (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      bkashNumber TEXT,
+      nagadNumber TEXT,
+      rocketNumber TEXT,
+      bankTransferInfo TEXT,
+      instructions TEXT,
+      createdAt TEXT,
+      updatedAt TEXT
+    )`,
+    `CREATE TABLE IF NOT EXISTS store_email_verification_tokens (
+      tokenHash TEXT PRIMARY KEY,
+      userId INTEGER NOT NULL,
+      expiresAt TEXT NOT NULL,
+      usedAt TEXT,
+      createdAt TEXT
+    )`,
+    `CREATE TABLE IF NOT EXISTS store_comments (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      productId INTEGER NOT NULL,
+      userId INTEGER,
+      userName TEXT,
+      rating INTEGER NOT NULL DEFAULT 5,
+      comment TEXT NOT NULL,
+      adminReply TEXT,
+      isVisible INTEGER DEFAULT 1,
+      createdAt TEXT,
+      updatedAt TEXT
+    )`
+  ]);
 
-  // Older deployments may already have a store_users table with a partial schema.
-  // Add every column used by signup/login so old Turso databases do not crash with
-  // a generic Server error. New databases still use the full CREATE TABLE above.
-  await addStoreColumn(db, "store_users", "fullName", "TEXT DEFAULT ''");
-  await addStoreColumn(db, "store_users", "photoUrl", "TEXT");
-  await addStoreColumn(db, "store_users", "age", "INTEGER DEFAULT 1");
-  await addStoreColumn(db, "store_users", "email", "TEXT DEFAULT ''");
-  await addStoreColumn(db, "store_users", "passwordHash", "TEXT DEFAULT ''");
-  await addStoreColumn(db, "store_users", "createdAt", "TEXT");
-  await addStoreColumn(db, "store_users", "updatedAt", "TEXT");
-  await addStoreColumn(db, "store_users", "phone", "TEXT");
-  await addStoreColumn(db, "store_users", "googleId", "TEXT");
-  await addStoreColumn(db, "store_users", "authProvider", "TEXT DEFAULT 'password'");
-  await addStoreColumn(db, "store_users", "emailVerified", "INTEGER DEFAULT 1");
-  await addStoreColumn(db, "store_users", "verifiedAt", "TEXT");
-  try {
-    await db.execute("CREATE UNIQUE INDEX IF NOT EXISTS uniq_store_users_phone ON store_users (phone) WHERE phone IS NOT NULL AND phone != ''");
-    await db.execute("CREATE UNIQUE INDEX IF NOT EXISTS uniq_store_users_google_id ON store_users (googleId) WHERE googleId IS NOT NULL AND googleId != ''");
-  } catch {
-    // Existing duplicate phones should not block the site from loading.
-  }
+  await addMissingStoreColumns(db, "store_users", {
+    fullName: "TEXT DEFAULT ''",
+    photoUrl: "TEXT",
+    age: "INTEGER DEFAULT 1",
+    email: "TEXT DEFAULT ''",
+    passwordHash: "TEXT DEFAULT ''",
+    createdAt: "TEXT",
+    updatedAt: "TEXT",
+    phone: "TEXT",
+    googleId: "TEXT",
+    authProvider: "TEXT DEFAULT 'password'",
+    emailVerified: "INTEGER DEFAULT 1",
+    verifiedAt: "TEXT"
+  });
 
-  await db.execute(`CREATE TABLE IF NOT EXISTS store_avatars (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    label TEXT,
-    photoUrl TEXT NOT NULL,
-    sortOrder INTEGER DEFAULT 99,
-    isActive INTEGER DEFAULT 1,
-    createdAt TEXT,
-    updatedAt TEXT
-  )`);
+  await addMissingStoreColumns(db, "store_avatars", {
+    label: "TEXT",
+    photoUrl: "TEXT DEFAULT ''",
+    sortOrder: "INTEGER DEFAULT 99",
+    isActive: "INTEGER DEFAULT 1",
+    createdAt: "TEXT",
+    updatedAt: "TEXT"
+  });
 
-  await db.execute(`CREATE TABLE IF NOT EXISTS store_products (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    name TEXT NOT NULL,
-    productType TEXT NOT NULL DEFAULT 'medicine',
-    photoUrl TEXT,
-    price REAL NOT NULL DEFAULT 0,
-    deliveryCharge REAL NOT NULL DEFAULT 0,
-    feniDeliveryCharge REAL NOT NULL DEFAULT 0,
-    outsideFeniDeliveryCharge REAL NOT NULL DEFAULT 0,
-    stock INTEGER NOT NULL DEFAULT 0,
-    description TEXT,
-    additionalPhotos TEXT,
-    isActive INTEGER DEFAULT 1,
-    sortOrder INTEGER DEFAULT 99,
-    createdAt TEXT,
-    updatedAt TEXT
-  )`);
+  await addMissingStoreColumns(db, "store_products", {
+    name: "TEXT DEFAULT ''",
+    productType: "TEXT NOT NULL DEFAULT 'medicine'",
+    photoUrl: "TEXT",
+    price: "REAL NOT NULL DEFAULT 0",
+    deliveryCharge: "REAL NOT NULL DEFAULT 0",
+    feniDeliveryCharge: "REAL NOT NULL DEFAULT 0",
+    outsideFeniDeliveryCharge: "REAL NOT NULL DEFAULT 0",
+    stock: "INTEGER NOT NULL DEFAULT 0",
+    description: "TEXT",
+    additionalPhotos: "TEXT",
+    isActive: "INTEGER DEFAULT 1",
+    sortOrder: "INTEGER DEFAULT 99",
+    createdAt: "TEXT",
+    updatedAt: "TEXT"
+  });
 
-  await db.execute(`CREATE TABLE IF NOT EXISTS store_cart (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    userId INTEGER NOT NULL,
-    productId INTEGER NOT NULL,
-    quantity INTEGER NOT NULL DEFAULT 1,
-    createdAt TEXT,
-    updatedAt TEXT,
-    UNIQUE(userId, productId)
-  )`);
+  await addMissingStoreColumns(db, "store_cart", {
+    userId: "INTEGER DEFAULT 0",
+    productId: "INTEGER DEFAULT 0",
+    quantity: "INTEGER NOT NULL DEFAULT 1",
+    createdAt: "TEXT",
+    updatedAt: "TEXT"
+  });
 
-  await db.execute(`CREATE TABLE IF NOT EXISTS store_orders (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    userId INTEGER NOT NULL,
-    productId INTEGER NOT NULL,
-    quantity INTEGER NOT NULL DEFAULT 1,
-    productName TEXT,
-    productPrice REAL NOT NULL DEFAULT 0,
-    deliveryCharge REAL NOT NULL DEFAULT 0,
-    customerName TEXT NOT NULL,
-    address TEXT NOT NULL,
-    deliveryLocation TEXT,
-    phone TEXT NOT NULL,
-    paymentMethod TEXT NOT NULL DEFAULT 'cod',
-    transactionId TEXT,
-    senderNumber TEXT,
-    deliveryPaymentMethod TEXT,
-    status TEXT NOT NULL DEFAULT 'pending',
-    createdAt TEXT,
-    updatedAt TEXT
-  )`);
+  await addMissingStoreColumns(db, "store_orders", {
+    userId: "INTEGER DEFAULT 0",
+    productId: "INTEGER DEFAULT 0",
+    quantity: "INTEGER NOT NULL DEFAULT 1",
+    productName: "TEXT",
+    productPrice: "REAL NOT NULL DEFAULT 0",
+    deliveryCharge: "REAL NOT NULL DEFAULT 0",
+    customerName: "TEXT DEFAULT ''",
+    address: "TEXT DEFAULT ''",
+    phone: "TEXT DEFAULT ''",
+    status: "TEXT NOT NULL DEFAULT 'pending'",
+    createdAt: "TEXT",
+    updatedAt: "TEXT",
+    paymentMethod: "TEXT NOT NULL DEFAULT 'cod'",
+    transactionId: "TEXT",
+    senderNumber: "TEXT",
+    deliveryPaymentMethod: "TEXT",
+    deliveryLocation: "TEXT",
+    orderType: "TEXT NOT NULL DEFAULT 'product'",
+    prescriptionText: "TEXT",
+    prescriptionFileUrl: "TEXT",
+    prescriptionQuotedAt: "TEXT"
+  });
 
-  await db.execute(`CREATE TABLE IF NOT EXISTS store_payment_settings (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    bkashNumber TEXT,
-    nagadNumber TEXT,
-    rocketNumber TEXT,
-    bankTransferInfo TEXT,
-    instructions TEXT,
-    createdAt TEXT,
-    updatedAt TEXT
-  )`);
+  await addMissingStoreColumns(db, "store_payment_settings", {
+    bkashNumber: "TEXT",
+    nagadNumber: "TEXT",
+    rocketNumber: "TEXT",
+    bankTransferInfo: "TEXT",
+    instructions: "TEXT",
+    createdAt: "TEXT",
+    updatedAt: "TEXT"
+  });
 
-  await db.execute(`CREATE TABLE IF NOT EXISTS store_email_verification_tokens (
-    tokenHash TEXT PRIMARY KEY,
-    userId INTEGER NOT NULL,
-    expiresAt TEXT NOT NULL,
-    usedAt TEXT,
-    createdAt TEXT
-  )`);
+  await addMissingStoreColumns(db, "store_comments", {
+    productId: "INTEGER DEFAULT 0",
+    userId: "INTEGER",
+    userName: "TEXT",
+    rating: "INTEGER NOT NULL DEFAULT 5",
+    comment: "TEXT DEFAULT ''",
+    adminReply: "TEXT",
+    isVisible: "INTEGER DEFAULT 1",
+    createdAt: "TEXT",
+    updatedAt: "TEXT",
+    parentId: "INTEGER",
+    commenterType: "TEXT DEFAULT 'user'",
+    isReview: "INTEGER DEFAULT 0"
+  });
 
-  await db.execute(`CREATE TABLE IF NOT EXISTS store_comments (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    productId INTEGER NOT NULL,
-    userId INTEGER,
-    userName TEXT,
-    rating INTEGER NOT NULL DEFAULT 5,
-    comment TEXT NOT NULL,
-    adminReply TEXT,
-    isVisible INTEGER DEFAULT 1,
-    createdAt TEXT,
-    updatedAt TEXT
-  )`);
-
-  // Older live deployments can have partial store tables. Add every column used by
-  // the current code before creating indexes or running admin queries, otherwise
-  // pages like Profile Photo, User Login Information, products, orders, and signup
-  // can all fail with a generic "Server error".
-  await addStoreColumn(db, "store_avatars", "label", "TEXT");
-  await addStoreColumn(db, "store_avatars", "photoUrl", "TEXT DEFAULT ''");
-  await addStoreColumn(db, "store_avatars", "sortOrder", "INTEGER DEFAULT 99");
-  await addStoreColumn(db, "store_avatars", "isActive", "INTEGER DEFAULT 1");
-  await addStoreColumn(db, "store_avatars", "createdAt", "TEXT");
-  await addStoreColumn(db, "store_avatars", "updatedAt", "TEXT");
-
-  await addStoreColumn(db, "store_products", "name", "TEXT DEFAULT ''");
-  await addStoreColumn(db, "store_products", "productType", "TEXT NOT NULL DEFAULT 'medicine'");
-  await addStoreColumn(db, "store_products", "photoUrl", "TEXT");
-  await addStoreColumn(db, "store_products", "price", "REAL NOT NULL DEFAULT 0");
-  await addStoreColumn(db, "store_products", "deliveryCharge", "REAL NOT NULL DEFAULT 0");
-  await addStoreColumn(db, "store_products", "feniDeliveryCharge", "REAL NOT NULL DEFAULT 0");
-  await addStoreColumn(db, "store_products", "outsideFeniDeliveryCharge", "REAL NOT NULL DEFAULT 0");
-  await addStoreColumn(db, "store_products", "stock", "INTEGER NOT NULL DEFAULT 0");
-  await addStoreColumn(db, "store_products", "description", "TEXT");
-  await addStoreColumn(db, "store_products", "additionalPhotos", "TEXT");
-  await addStoreColumn(db, "store_products", "isActive", "INTEGER DEFAULT 1");
-  await addStoreColumn(db, "store_products", "sortOrder", "INTEGER DEFAULT 99");
-  await addStoreColumn(db, "store_products", "createdAt", "TEXT");
-  await addStoreColumn(db, "store_products", "updatedAt", "TEXT");
-
-  await addStoreColumn(db, "store_cart", "userId", "INTEGER DEFAULT 0");
-  await addStoreColumn(db, "store_cart", "productId", "INTEGER DEFAULT 0");
-  await addStoreColumn(db, "store_cart", "quantity", "INTEGER NOT NULL DEFAULT 1");
-  await addStoreColumn(db, "store_cart", "createdAt", "TEXT");
-  await addStoreColumn(db, "store_cart", "updatedAt", "TEXT");
-
-  await addStoreColumn(db, "store_orders", "userId", "INTEGER DEFAULT 0");
-  await addStoreColumn(db, "store_orders", "productId", "INTEGER DEFAULT 0");
-  await addStoreColumn(db, "store_orders", "quantity", "INTEGER NOT NULL DEFAULT 1");
-  await addStoreColumn(db, "store_orders", "productName", "TEXT");
-  await addStoreColumn(db, "store_orders", "productPrice", "REAL NOT NULL DEFAULT 0");
-  await addStoreColumn(db, "store_orders", "deliveryCharge", "REAL NOT NULL DEFAULT 0");
-  await addStoreColumn(db, "store_orders", "customerName", "TEXT DEFAULT ''");
-  await addStoreColumn(db, "store_orders", "address", "TEXT DEFAULT ''");
-  await addStoreColumn(db, "store_orders", "phone", "TEXT DEFAULT ''");
-  await addStoreColumn(db, "store_orders", "status", "TEXT NOT NULL DEFAULT 'pending'");
-  await addStoreColumn(db, "store_orders", "createdAt", "TEXT");
-  await addStoreColumn(db, "store_orders", "updatedAt", "TEXT");
-
-  await addStoreColumn(db, "store_payment_settings", "bkashNumber", "TEXT");
-  await addStoreColumn(db, "store_payment_settings", "nagadNumber", "TEXT");
-  await addStoreColumn(db, "store_payment_settings", "instructions", "TEXT");
-  await addStoreColumn(db, "store_payment_settings", "createdAt", "TEXT");
-  await addStoreColumn(db, "store_payment_settings", "updatedAt", "TEXT");
-
-  await addStoreColumn(db, "store_comments", "productId", "INTEGER DEFAULT 0");
-  await addStoreColumn(db, "store_comments", "userId", "INTEGER");
-  await addStoreColumn(db, "store_comments", "userName", "TEXT");
-  await addStoreColumn(db, "store_comments", "rating", "INTEGER NOT NULL DEFAULT 5");
-  await addStoreColumn(db, "store_comments", "comment", "TEXT DEFAULT ''");
-  await addStoreColumn(db, "store_comments", "adminReply", "TEXT");
-  await addStoreColumn(db, "store_comments", "isVisible", "INTEGER DEFAULT 1");
-  await addStoreColumn(db, "store_comments", "createdAt", "TEXT");
-  await addStoreColumn(db, "store_comments", "updatedAt", "TEXT");
-
-  await addStoreColumn(db, "store_orders", "paymentMethod", "TEXT NOT NULL DEFAULT 'cod'");
-  await addStoreColumn(db, "store_orders", "transactionId", "TEXT");
-  await addStoreColumn(db, "store_orders", "senderNumber", "TEXT");
-  await addStoreColumn(db, "store_orders", "deliveryPaymentMethod", "TEXT");
-  await addStoreColumn(db, "store_orders", "deliveryLocation", "TEXT");
-  await addStoreColumn(db, "store_payment_settings", "rocketNumber", "TEXT");
-  await addStoreColumn(db, "store_payment_settings", "bankTransferInfo", "TEXT");
-
-  await addStoreColumn(db, "store_products", "productType", "TEXT NOT NULL DEFAULT 'medicine'");
-  await addStoreColumn(db, "store_products", "feniDeliveryCharge", "REAL NOT NULL DEFAULT 0");
-  await addStoreColumn(db, "store_products", "outsideFeniDeliveryCharge", "REAL NOT NULL DEFAULT 0");
-
-  await addStoreColumn(db, "store_orders", "orderType", "TEXT NOT NULL DEFAULT 'product'");
-  await addStoreColumn(db, "store_orders", "prescriptionText", "TEXT");
-  await addStoreColumn(db, "store_orders", "prescriptionFileUrl", "TEXT");
-  await addStoreColumn(db, "store_orders", "prescriptionQuotedAt", "TEXT");
-
-  await db.execute({
+  await safeStoreSchemaExecute(db, {
     sql: "UPDATE store_products SET feniDeliveryCharge = deliveryCharge, outsideFeniDeliveryCharge = deliveryCharge WHERE deliveryCharge > 0 AND feniDeliveryCharge = 0 AND outsideFeniDeliveryCharge = 0",
     args: []
   });
 
-  await addStoreColumn(db, "store_comments", "parentId", "INTEGER");
-  await addStoreColumn(db, "store_comments", "commenterType", "TEXT DEFAULT 'user'");
-  await addStoreColumn(db, "store_comments", "isReview", "INTEGER DEFAULT 0");
-
-  await safeStoreSchemaExecute(db, "CREATE INDEX IF NOT EXISTS idx_store_products_active_sort ON store_products (isActive, sortOrder, createdAt)");
-  await safeStoreSchemaExecute(db, "CREATE INDEX IF NOT EXISTS idx_store_products_type_active_sort ON store_products (productType, isActive, sortOrder, createdAt)");
-  await safeStoreSchemaExecute(db, "CREATE INDEX IF NOT EXISTS idx_store_cart_user ON store_cart (userId, updatedAt)");
-  await safeStoreSchemaExecute(db, "CREATE INDEX IF NOT EXISTS idx_store_orders_user_status ON store_orders (userId, status, createdAt)");
-  await safeStoreSchemaExecute(db, "CREATE INDEX IF NOT EXISTS idx_store_comments_product ON store_comments (productId, isVisible, createdAt)");
-  await safeStoreSchemaExecute(db, "CREATE INDEX IF NOT EXISTS idx_store_comments_parent ON store_comments (parentId, createdAt)");
-  await safeStoreSchemaExecute(db, "CREATE INDEX IF NOT EXISTS idx_store_comments_user_review ON store_comments (userId, productId, isReview)");
-  await safeStoreSchemaExecute(db, "CREATE UNIQUE INDEX IF NOT EXISTS uniq_store_user_product_review ON store_comments (userId, productId) WHERE isReview = 1 AND userId IS NOT NULL");
-  await safeStoreSchemaExecute(db, "CREATE INDEX IF NOT EXISTS idx_store_avatars_active_sort ON store_avatars (isActive, sortOrder, createdAt)");
-  await safeStoreSchemaExecute(db, "CREATE INDEX IF NOT EXISTS idx_store_email_verify_user ON store_email_verification_tokens (userId, expiresAt)");
+  await safeStoreSchemaBatch(db, [
+    "CREATE UNIQUE INDEX IF NOT EXISTS uniq_store_users_phone ON store_users (phone) WHERE phone IS NOT NULL AND phone != ''",
+    "CREATE UNIQUE INDEX IF NOT EXISTS uniq_store_users_google_id ON store_users (googleId) WHERE googleId IS NOT NULL AND googleId != ''",
+    "CREATE INDEX IF NOT EXISTS idx_store_products_active_sort ON store_products (isActive, sortOrder, createdAt)",
+    "CREATE INDEX IF NOT EXISTS idx_store_products_type_active_sort ON store_products (productType, isActive, sortOrder, createdAt)",
+    "CREATE INDEX IF NOT EXISTS idx_store_cart_user ON store_cart (userId, updatedAt)",
+    "CREATE INDEX IF NOT EXISTS idx_store_orders_user_status ON store_orders (userId, status, createdAt)",
+    "CREATE INDEX IF NOT EXISTS idx_store_comments_product ON store_comments (productId, isVisible, createdAt)",
+    "CREATE INDEX IF NOT EXISTS idx_store_comments_parent ON store_comments (parentId, createdAt)",
+    "CREATE INDEX IF NOT EXISTS idx_store_comments_user_review ON store_comments (userId, productId, isReview)",
+    "CREATE UNIQUE INDEX IF NOT EXISTS uniq_store_user_product_review ON store_comments (userId, productId) WHERE isReview = 1 AND userId IS NOT NULL",
+    "CREATE INDEX IF NOT EXISTS idx_store_avatars_active_sort ON store_avatars (isActive, sortOrder, createdAt)",
+    "CREATE INDEX IF NOT EXISTS idx_store_email_verify_user ON store_email_verification_tokens (userId, expiresAt)"
+  ]);
 
   await safeStoreSchemaExecute(db, {
     sql: "UPDATE store_products SET description = '', updatedAt = ? WHERE description = ?",
     args: [new Date().toISOString(), "Starter store product. Edit or delete this from Superuser → Add Products."]
   });
 }
-
 
 async function getStoreTableColumns(db, table) {
   try {

@@ -7,7 +7,7 @@ export async function onRequestPatch({ request, env, params }) {
     const unauthorized = await requireAdmin(request, env, "store-users");
     if (unauthorized) return unauthorized;
     const body = await readJson(request);
-    const db = await getStoreDb(env);
+    const db = await getStoreDb(env, { mode: "auth" });
     const existing = await getAvatarById(db, params.id);
     if (!existing) return error("Profile photo not found", 404);
     const result = sanitizeAvatarInput(body, existing);
@@ -23,7 +23,7 @@ export async function onRequestDelete({ request, env, params }) {
   try {
     const unauthorized = await requireAdmin(request, env, "store-users");
     if (unauthorized) return unauthorized;
-    const db = await getStoreDb(env);
+    const db = await getStoreDb(env, { mode: "auth" });
     const deleted = await deleteAvatar(db, params.id);
     if (!deleted) return error("Profile photo not found", 404);
     return json({ ok: true });

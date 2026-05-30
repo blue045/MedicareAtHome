@@ -6,7 +6,7 @@ export async function onRequestGet({ request, env }) {
   try {
     const unauthorized = await requireAdmin(request, env, "store-users");
     if (unauthorized) return unauthorized;
-    const db = await getStoreDb(env);
+    const db = await getStoreDb(env, { mode: "auth" });
     const avatars = await listAvatars(db, true);
     return json({ avatars });
   } catch (err) {
@@ -21,7 +21,7 @@ export async function onRequestPost({ request, env }) {
     const body = await readJson(request);
     const result = sanitizeAvatarInput(body);
     if (!result.ok) return error(result.error, 400);
-    const db = await getStoreDb(env);
+    const db = await getStoreDb(env, { mode: "auth" });
     const avatar = await createAvatar(db, result.value);
     return json({ ok: true, avatar }, { status: 201 });
   } catch (err) {
