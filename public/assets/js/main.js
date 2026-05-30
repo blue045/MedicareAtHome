@@ -1466,7 +1466,6 @@ function renderHospitalDoctors(hospital = {}) {
         <div>
           <p class="section-kicker">Available doctors</p>
           <h2 class="section-title">Doctors at ${escapeHtml(hospital.name || "this hospital")}</h2>
-          <p class="section-copy">These doctor cards are assigned from the admin panel.</p>
         </div>
       </div>
       <div class="doctor-grid hospital-doctor-grid">
