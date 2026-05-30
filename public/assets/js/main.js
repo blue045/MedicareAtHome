@@ -46,7 +46,7 @@ const fallbackSettings = {
   location: "Sultanpur, Feni, Bangladesh",
   email: "",
   instagramHandle: "",
-  facebookUrl: "https://www.facebook.com/",
+  facebookUrl: "",
   socialLinks: [],
   phones: ["01647139287", "01609672748", "01623148949"],
   whatsapp: "8801647139287",
@@ -151,6 +151,76 @@ function normalizeDisplayLocation(value = "") {
     .replaceAll("Feni, Barishal", "Sultanpur, Feni")
     .replaceAll("Feni and nearby areas", "Sultanpur, Feni and nearby areas")
     .replaceAll("Barishal and nearby areas", "Sultanpur, Feni and nearby areas");
+}
+
+const footerSocialPlatforms = {
+  facebook: {
+    label: "Facebook",
+    className: "facebook",
+    icon: `<svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M22 12.06C22 6.5 17.52 2 12 2S2 6.5 2 12.06c0 5.02 3.66 9.18 8.44 9.94v-7.03H7.9v-2.91h2.54V9.84c0-2.52 1.49-3.92 3.77-3.92 1.09 0 2.23.2 2.23.2v2.47h-1.26c-1.24 0-1.63.78-1.63 1.57v1.9h2.78l-.44 2.91h-2.34V22C18.34 21.24 22 17.08 22 12.06z"/></svg>`
+  },
+  youtube: {
+    label: "YouTube",
+    className: "youtube",
+    icon: `<svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M21.58 7.19a2.51 2.51 0 0 0-1.77-1.78C18.25 5 12 5 12 5s-6.25 0-7.81.41a2.51 2.51 0 0 0-1.77 1.78A26.1 26.1 0 0 0 2 12a26.1 26.1 0 0 0 .42 4.81 2.51 2.51 0 0 0 1.77 1.78C5.75 19 12 19 12 19s6.25 0 7.81-.41a2.51 2.51 0 0 0 1.77-1.78A26.1 26.1 0 0 0 22 12a26.1 26.1 0 0 0-.42-4.81zM10 15V9l5.2 3L10 15z"/></svg>`
+  },
+  instagram: {
+    label: "Instagram",
+    className: "instagram",
+    icon: `<svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M7.8 2h8.4A5.81 5.81 0 0 1 22 7.8v8.4A5.81 5.81 0 0 1 16.2 22H7.8A5.81 5.81 0 0 1 2 16.2V7.8A5.81 5.81 0 0 1 7.8 2zm0 2A3.8 3.8 0 0 0 4 7.8v8.4A3.8 3.8 0 0 0 7.8 20h8.4a3.8 3.8 0 0 0 3.8-3.8V7.8A3.8 3.8 0 0 0 16.2 4H7.8zm8.7 2.35a1.15 1.15 0 1 1 0 2.3 1.15 1.15 0 0 1 0-2.3zM12 7a5 5 0 1 1 0 10 5 5 0 0 1 0-10zm0 2a3 3 0 1 0 0 6 3 3 0 0 0 0-6z"/></svg>`
+  }
+};
+
+function normalizeExternalUrl(value = "") {
+  const raw = String(value || "").trim();
+  if (!raw || raw === "#") return "";
+  if (/^(javascript|data):/i.test(raw)) return "";
+  return /^https?:\/\//i.test(raw) ? raw : `https://${raw.replace(/^\/\//, "")}`;
+}
+
+function getSocialLink(settings = {}, key = "") {
+  const wanted = String(key || "").toLowerCase();
+  const links = Array.isArray(settings.socialLinks) ? settings.socialLinks : [];
+  const direct = links.find((item) => String(item?.label || "").trim().toLowerCase() === wanted);
+  if (direct?.url) return normalizeExternalUrl(direct.url);
+  const fuzzy = links.find((item) => {
+    const label = String(item?.label || "").trim().toLowerCase();
+    const url = String(item?.url || "").trim().toLowerCase();
+    return label.includes(wanted) || url.includes(wanted);
+  });
+  if (fuzzy?.url) return normalizeExternalUrl(fuzzy.url);
+  if (wanted === "facebook") return normalizeExternalUrl(settings.facebookUrl || "");
+  if (wanted === "instagram") return normalizeExternalUrl(settings.instagramHandle || "");
+  return "";
+}
+
+function getFooterSocialLinks(settings = {}) {
+  return Object.entries(footerSocialPlatforms)
+    .map(([key, platform]) => ({ ...platform, key, url: getSocialLink(settings, key) }))
+    .filter((platform) => platform.url);
+}
+
+function renderFooterSocialButtons() {
+  const links = getFooterSocialLinks(state.settings || {});
+  qsa(".site-footer .footer-grid").forEach((footerGrid) => {
+    let bar = footerGrid.querySelector("[data-footer-social-icons]");
+    if (!links.length) {
+      if (bar) bar.remove();
+      return;
+    }
+    if (!bar) {
+      bar = document.createElement("nav");
+      bar.className = "footer-social-icons";
+      bar.dataset.footerSocialIcons = "true";
+      bar.setAttribute("aria-label", "Social media links");
+      footerGrid.appendChild(bar);
+    }
+    bar.innerHTML = links.map((platform) => `
+      <a class="footer-social-icon footer-social-icon-${escapeHtml(platform.className)}" href="${escapeHtml(platform.url)}" target="_blank" rel="noopener noreferrer" aria-label="Open ${escapeHtml(platform.label)}" title="${escapeHtml(platform.label)}">
+        ${platform.icon}
+      </a>
+    `).join("");
+  });
 }
 
 function normalizeAboutNavLabel(value = "") {
@@ -906,6 +976,7 @@ function renderBranding() {
   });
   renderEditablePageText(settings);
   qsa("[data-footer-location]").forEach((node) => (node.textContent = normalizeDisplayLocation(settings.location || fallbackSettings.location)));
+  renderFooterSocialButtons();
   qsa("[data-emergency-note]").forEach((node) => (node.textContent = settings.emergencyNote || fallbackSettings.emergencyNote));
 
   const whatsAppNumber = normalizeWhatsApp(settings.whatsapp || settings.phones?.[0] || fallbackSettings.whatsapp);

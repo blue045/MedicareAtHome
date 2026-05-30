@@ -9713,3 +9713,73 @@ html[data-theme="dark"] .hospital-doctors-section {
     max-width: none;
   }
 }
+
+/* Scoped social media icons for the footer button bar only. */
+.site-footer .footer-social-icons {
+  display: inline-flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 10px;
+  margin-left: auto;
+  flex-wrap: wrap;
+}
+
+.site-footer .footer-social-icon {
+  width: 46px;
+  height: 46px;
+  border-radius: 999px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  text-decoration: none;
+  background: rgba(248, 250, 252, 0.96);
+  border: 1px solid var(--border);
+  box-shadow: 0 12px 28px rgba(15, 23, 42, 0.08);
+  transition: transform 0.18s ease, box-shadow 0.18s ease, border-color 0.18s ease;
+}
+
+.site-footer .footer-social-icon:hover,
+.site-footer .footer-social-icon:focus-visible {
+  transform: translateY(-2px);
+  box-shadow: 0 18px 36px rgba(15, 23, 42, 0.14);
+  border-color: rgba(37, 99, 235, 0.28);
+}
+
+.site-footer .footer-social-icon svg {
+  width: 23px;
+  height: 23px;
+  display: block;
+  fill: currentColor;
+}
+
+.site-footer .footer-social-icon-facebook { color: #1877f2; }
+.site-footer .footer-social-icon-youtube { color: #ff0000; }
+.site-footer .footer-social-icon-instagram { color: #e4405f; }
+
+.social-official-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 14px;
+}
+
+@media (max-width: 760px) {
+  .site-footer .footer-grid {
+    align-items: flex-start;
+  }
+
+  .site-footer .footer-social-icons {
+    width: 100%;
+    justify-content: center;
+    margin-left: 0;
+    padding-top: 4px;
+  }
+
+  .site-footer .footer-social-icon {
+    width: 44px;
+    height: 44px;
+  }
+
+  .social-official-grid {
+    grid-template-columns: 1fr;
+  }
+}

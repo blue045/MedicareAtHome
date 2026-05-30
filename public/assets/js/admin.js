@@ -435,6 +435,54 @@ function parseSocialLinks(value = "") {
     .slice(0, 12);
 }
 
+const officialSocialKeys = new Set(["facebook", "youtube", "instagram"]);
+
+function normalizeSocialUrl(value = "") {
+  const raw = String(value || "").trim();
+  if (!raw || raw === "#") return "";
+  if (/^(javascript|data):/i.test(raw)) return "";
+  return /^https?:\/\//i.test(raw) ? raw : `https://${raw.replace(/^\/\//, "")}`;
+}
+
+function socialKeyFromItem(item = {}) {
+  const label = String(item?.label || "").trim().toLowerCase();
+  const url = String(item?.url || "").trim().toLowerCase();
+  if (label.includes("facebook") || url.includes("facebook.com") || url.includes("fb.com")) return "facebook";
+  if (label.includes("youtube") || url.includes("youtube.com") || url.includes("youtu.be")) return "youtube";
+  if (label.includes("instagram") || url.includes("instagram.com")) return "instagram";
+  return "";
+}
+
+function socialUrlFromSettings(settings = {}, key = "") {
+  const wanted = String(key || "").toLowerCase();
+  const links = Array.isArray(settings.socialLinks) ? settings.socialLinks : [];
+  const match = links.find((item) => socialKeyFromItem(item) === wanted);
+  if (match?.url) return normalizeSocialUrl(match.url);
+  if (wanted === "facebook") return normalizeSocialUrl(settings.facebookUrl || "");
+  if (wanted === "instagram") return normalizeSocialUrl(settings.instagramHandle || "");
+  return "";
+}
+
+function buildSocialLinksFromForm(settings = {}) {
+  const official = [
+    ["Facebook", qs("#facebookUrlSetting")?.value || socialUrlFromSettings(settings, "facebook")],
+    ["YouTube", qs("#youtubeUrlSetting")?.value || socialUrlFromSettings(settings, "youtube")],
+    ["Instagram", qs("#instagramUrlSetting")?.value || socialUrlFromSettings(settings, "instagram")]
+  ]
+    .map(([label, url]) => ({ label, url: normalizeSocialUrl(url) }))
+    .filter((item) => item.url);
+  const extras = parseSocialLinks(qs("#socialLinksSetting")?.value || "")
+    .filter((item) => !officialSocialKeys.has(socialKeyFromItem(item)))
+    .map((item) => ({ ...item, url: normalizeSocialUrl(item.url) }))
+    .filter((item) => item.url);
+  return [...official, ...extras].slice(0, 12);
+}
+
+function extraSocialLinks(settings = {}) {
+  return (Array.isArray(settings.socialLinks) ? settings.socialLinks : [])
+    .filter((item) => !officialSocialKeys.has(socialKeyFromItem(item)));
+}
+
 function cleanEmoji(value = "") {
   return String(value || "")
     .trim()
@@ -2085,8 +2133,11 @@ function fillSettingsForm() {
   if (qs("#location")) qs("#location").value = settings.location || "";
   if (qs("#whatsappSetting")) qs("#whatsappSetting").value = settings.whatsapp || "";
   if (qs("#phonesSetting")) qs("#phonesSetting").value = (settings.phones || []).join(", ");
+  if (qs("#facebookUrlSetting")) qs("#facebookUrlSetting").value = socialUrlFromSettings(settings, "facebook");
+  if (qs("#youtubeUrlSetting")) qs("#youtubeUrlSetting").value = socialUrlFromSettings(settings, "youtube");
+  if (qs("#instagramUrlSetting")) qs("#instagramUrlSetting").value = socialUrlFromSettings(settings, "instagram");
   const socialInput = qs("#socialLinksSetting");
-  if (socialInput) socialInput.value = formatSocialLinks(settings.socialLinks || []);
+  if (socialInput) socialInput.value = formatSocialLinks(extraSocialLinks(settings));
   if (qs("#emergencyNote")) qs("#emergencyNote").value = settings.emergencyNote || "";
 }
 
@@ -2123,7 +2174,9 @@ function getCurrentSettingsPayload() {
     location: qs("#location")?.value.trim() || settings.location || "",
     whatsapp: qs("#whatsappSetting")?.value.trim() || settings.whatsapp || "",
     phones: splitList(qs("#phonesSetting")?.value || (settings.phones || []).join(", ")),
-    socialLinks: parseSocialLinks(qs("#socialLinksSetting")?.value || formatSocialLinks(settings.socialLinks || [])),
+    socialLinks: buildSocialLinksFromForm(settings),
+    facebookUrl: qs("#facebookUrlSetting")?.value.trim() || socialUrlFromSettings(settings, "facebook"),
+    instagramHandle: qs("#instagramUrlSetting")?.value.trim() || socialUrlFromSettings(settings, "instagram"),
     serviceTags: serviceData.serviceTags,
     serviceIcons: serviceData.serviceIcons,
     serviceDescriptions: serviceData.serviceDescriptions,
