@@ -59,9 +59,9 @@ export function requiredSecret(env = {}, names = [], label = "secret", minLength
 }
 
 function hashIterations(env = {}) {
-  const value = Number(cleanEnv(env.PASSWORD_HASH_ITERATIONS || env.STORE_PASSWORD_HASH_ITERATIONS || "120000"));
-  if (!Number.isFinite(value)) return 120000;
-  return Math.max(60000, Math.min(250000, Math.round(value)));
+  const value = Number(cleanEnv(env.PASSWORD_HASH_ITERATIONS || env.STORE_PASSWORD_HASH_ITERATIONS || "45000"));
+  if (!Number.isFinite(value)) return 45000;
+  return Math.max(20000, Math.min(250000, Math.round(value)));
 }
 
 export async function hashPasswordPbkdf2(identifier = "", password = "", env = {}, secret = "") {

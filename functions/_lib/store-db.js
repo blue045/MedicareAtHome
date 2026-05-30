@@ -4,6 +4,51 @@ import { base64UrlEncode, base64UrlDecode, constantTimeEqual, createVerification
 const clients = new Map();
 const initialized = new Set();
 
+function sleep(ms) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+function isTransientDbError(error) {
+  const message = String(error?.message || error || "").toLowerCase();
+  return message.includes("sqlite_busy")
+    || message.includes("database is locked")
+    || message.includes("server is busy")
+    || message.includes("temporarily unavailable")
+    || message.includes("too many requests")
+    || message.includes("timeout")
+    || message.includes("fetch failed")
+    || message.includes("econnreset")
+    || message.includes("network");
+}
+
+async function retryDbOperation(operation, attempts = 4) {
+  let lastError;
+  for (let attempt = 0; attempt < attempts; attempt += 1) {
+    try {
+      return await operation();
+    } catch (error) {
+      lastError = error;
+      if (!isTransientDbError(error) || attempt === attempts - 1) throw error;
+      await sleep(120 * (attempt + 1) * (attempt + 1));
+    }
+  }
+  throw lastError;
+}
+
+function wrapStoreClient(client) {
+  if (!client || client.__medicareRetryWrapped) return client;
+  const rawExecute = client.execute?.bind(client);
+  const rawBatch = client.batch?.bind(client);
+  if (rawExecute) {
+    client.execute = (statement) => retryDbOperation(() => rawExecute(statement));
+  }
+  if (rawBatch) {
+    client.batch = (statements, mode) => retryDbOperation(() => rawBatch(statements, mode));
+  }
+  Object.defineProperty(client, "__medicareRetryWrapped", { value: true, enumerable: false });
+  return client;
+}
+
 function cleanEnv(value) {
   return String(value || "").trim().replace(/^[\'\"]|[\'\"]$/g, "");
 }
@@ -262,7 +307,7 @@ export async function getStoreDb(env) {
   const cacheKey = `${url}::${authToken.slice(0, 12)}`;
   let client = clients.get(cacheKey);
   if (!client) {
-    client = createClient({ url, authToken });
+    client = wrapStoreClient(createClient({ url, authToken }));
     clients.set(cacheKey, client);
   }
   if (!initialized.has(cacheKey)) {
@@ -300,6 +345,16 @@ async function ensureStoreSchema(db) {
     updatedAt TEXT
   )`);
 
+  // Older deployments may already have a store_users table with a partial schema.
+  // Add every column used by signup/login so old Turso databases do not crash with
+  // a generic Server error. New databases still use the full CREATE TABLE above.
+  await addStoreColumn(db, "store_users", "fullName", "TEXT DEFAULT ''");
+  await addStoreColumn(db, "store_users", "photoUrl", "TEXT");
+  await addStoreColumn(db, "store_users", "age", "INTEGER DEFAULT 1");
+  await addStoreColumn(db, "store_users", "email", "TEXT DEFAULT ''");
+  await addStoreColumn(db, "store_users", "passwordHash", "TEXT DEFAULT ''");
+  await addStoreColumn(db, "store_users", "createdAt", "TEXT");
+  await addStoreColumn(db, "store_users", "updatedAt", "TEXT");
   await addStoreColumn(db, "store_users", "phone", "TEXT");
   await addStoreColumn(db, "store_users", "googleId", "TEXT");
   await addStoreColumn(db, "store_users", "authProvider", "TEXT DEFAULT 'password'");
@@ -532,6 +587,24 @@ function rowToUser(row) {
     createdAt: row.createdAt || "",
     updatedAt: row.updatedAt || ""
   };
+}
+
+async function findUserAfterInsert(db, id, email, phone) {
+  if (id !== undefined && id !== null && String(id) !== "" && String(id) !== "undefined") {
+    const byId = await getUserById(db, String(id));
+    if (byId) return byId;
+  }
+  if (email) {
+    const row = await getUserByEmail(db, email);
+    const user = rowToUser(row);
+    if (user) return user;
+  }
+  if (phone) {
+    const row = await getUserByPhone(db, phone);
+    const user = rowToUser(row);
+    if (user) return user;
+  }
+  return null;
 }
 
 function rowToAvatar(row) {
@@ -832,7 +905,12 @@ export async function createUser(db, input, env) {
     sql: `INSERT INTO store_users (fullName, photoUrl, age, email, phone, passwordHash, emailVerified, verifiedAt, createdAt, updatedAt) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     args: [input.fullName, input.photoUrl || "", input.age, storedEmail, phone, passwordHash, needsVerification ? 0 : 1, needsVerification ? "" : now, now, toIsoText(input.updatedAt)]
   });
-  return getUserById(db, String(result.lastInsertRowid));
+  const insertedId = result?.lastInsertRowid ?? result?.lastInsertId ?? result?.rows?.[0]?.id ?? "";
+  const user = await findUserAfterInsert(db, insertedId, storedEmail, phone);
+  if (!user) {
+    throw new Error("Account was created, but the user record could not be loaded. Please try logging in.");
+  }
+  return user;
 }
 
 export async function getUserByEmail(db, email) {
@@ -980,8 +1058,8 @@ export async function updateCurrentUserPassword(db, id, input = {}, env = {}) {
 
   if (shouldCheckCurrentPassword) {
     if (!currentPassword) return { ok: false, error: "Current password is required." };
-    const currentHash = await hashPassword(hashKey, currentPassword, env);
-    if (currentHash !== row.passwordHash) return { ok: false, error: "Current password is incorrect.", status: 401 };
+    const currentValid = await verifyStorePassword(String(row.passwordHash || ""), hashKey, currentPassword, env);
+    if (!currentValid) return { ok: false, error: "Current password is incorrect.", status: 401 };
   }
 
   const passwordHash = await hashPassword(hashKey, newPassword, env);
