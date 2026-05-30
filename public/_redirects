@@ -4,6 +4,8 @@
 /su/main/ /su/index.html 200
 /su/content /su/index.html 200
 /su/content/ /su/index.html 200
+/su/content/:page /su/index.html 200
+/su/content/:page/ /su/index.html 200
 /su/about /su/index.html 200
 /su/about/ /su/index.html 200
 /su/doctors /su/index.html 200
@@ -39,6 +41,8 @@
 /superuser/main/ /superuser/index.html 200
 /superuser/content /superuser/index.html 200
 /superuser/content/ /superuser/index.html 200
+/superuser/content/:page /superuser/index.html 200
+/superuser/content/:page/ /superuser/index.html 200
 /superuser/doctors /superuser/index.html 200
 /superuser/doctors/ /superuser/index.html 200
 /superuser/ambulance /superuser/index.html 200

@@ -1025,6 +1025,20 @@ function showAdmin(isLoggedIn) {
   qs("#adminView")?.classList.toggle("hidden", !isLoggedIn);
 }
 
+function contentPageFromLocation() {
+  const parts = window.location.pathname.split("/").filter(Boolean);
+  if (parts[0] === panelRoot.slice(1) && parts[1] === "content" && parts[2]) {
+    const key = decodeURIComponent(parts[2]).toLowerCase();
+    return editableContentPageMap[key] ? key : "";
+  }
+  return "";
+}
+
+function contentEditorUrl(pageKey = "") {
+  const key = String(pageKey || "").toLowerCase();
+  return key && editableContentPageMap[key] ? `${panelRoot}/content/${encodeURIComponent(key)}` : `${panelRoot}/content`;
+}
+
 function pageFromLocation() {
   const parts = window.location.pathname.split("/").filter(Boolean);
   if (parts[0] === panelRoot.slice(1) && parts[1] === "blood" && parts[2]) {
@@ -1033,6 +1047,11 @@ function pageFromLocation() {
   }
   if (parts[0] === panelRoot.slice(1) && parts[1]) {
     const page = parts[1].toLowerCase();
+    if (page === "content") {
+      const contentKey = contentPageFromLocation();
+      state.activeContentPage = contentKey || "services";
+      return "content";
+    }
     const normalizedPage = page === "reviews" ? "comments" : page;
     return validAdminPages.includes(normalizedPage) ? normalizedPage : "dashboard";
   }
@@ -1095,6 +1114,9 @@ function setAdminPage(page, updateUrl = false) {
 
   if (updateUrl) {
     let url = nextPage === "dashboard" ? panelRoot : `${panelRoot}/${nextPage === "comments" ? "reviews" : nextPage}`;
+    if (nextPage === "content") {
+      url = `${panelRoot}/content`;
+    }
     if (nextPage === "bloodDetail") {
       const profile = state.bloodProfiles.find((item) => String(item.id) === String(state.bloodDetailId));
       url = profile ? adminBloodUrl(profile) : `${panelRoot}/blood/${encodeURIComponent(state.bloodDetailId || "profile")}`;
@@ -1895,18 +1917,27 @@ function renderContentPageCards() {
         <span class="content-page-card-icon">${escapeHtml(page.icon)}</span>
         <span class="content-page-card-title">${escapeHtml(entry.label || page.label)}</span>
         <span class="content-page-card-copy">${escapeHtml(entry.title || page.label)}</span>
-        <span class="content-page-card-meta">${blockCount} custom block${blockCount === 1 ? "" : "s"}${entry.hideDefaultModule ? " · custom-only page" : ""}</span>
+        <span class="content-page-card-meta">Click to open full ${escapeHtml(page.label)} page editor · ${blockCount} custom block${blockCount === 1 ? "" : "s"}${entry.hideDefaultModule ? " · custom-only page" : ""}</span>
         <span class="content-page-card-status ${entry.hidden ? "is-hidden" : ""}">${entry.hidden ? "Hidden from menu" : "Visible"}</span>
       </button>
     `;
   }).join("");
 }
 
-function showContentPageOverview() {
+function showContentPageOverview(updateUrl = false) {
   const grid = qs("#contentPagesOverview");
   const form = qs("#contentPageForm");
+  state.activeContentPage = "services";
   if (grid) grid.hidden = false;
   if (form) form.hidden = true;
+  const title = qs("#adminCurrentPageTitle");
+  if (title && state.activePage === "content") title.textContent = "Content Pages";
+  if (updateUrl) {
+    const url = contentEditorUrl("");
+    if (window.location.pathname.replace(/\/+$/, "") !== url.replace(/\/+$/, "")) {
+      history.pushState({ page: "content" }, "", url);
+    }
+  }
 }
 
 function fillContentEditor(pageKey) {
@@ -1914,8 +1945,10 @@ function fillContentEditor(pageKey) {
   state.activeContentPage = page.key;
   const entry = normalizeAdminPageContentEntry(page, state.settings || {});
   if (qs("#contentEditorPageKey")) qs("#contentEditorPageKey").value = page.key;
-  if (qs("#contentEditorKicker")) qs("#contentEditorKicker").textContent = `${page.label} page`;
+  if (qs("#contentEditorKicker")) qs("#contentEditorKicker").textContent = `${page.label} full page editor`;
   if (qs("#contentEditorTitle")) qs("#contentEditorTitle").textContent = `Edit full ${page.label} page`;
+  const title = qs("#adminCurrentPageTitle");
+  if (title && state.activePage === "content") title.textContent = `Content Pages / ${page.label}`;
   if (qs("#contentPageLabel")) qs("#contentPageLabel").value = entry.label || "";
   if (qs("#contentPageBadge")) qs("#contentPageBadge").value = entry.badge || "";
   if (qs("#contentPageTitleField")) qs("#contentPageTitleField").value = entry.title || "";
@@ -1938,12 +1971,22 @@ function fillContentEditor(pageKey) {
   renderContentPreview();
 }
 
-function openContentPageEditor(pageKey) {
+function openContentPageEditor(pageKey, updateUrl = true) {
+  const page = editableContentPageMap[pageKey] || editableContentPages[0];
   const grid = qs("#contentPagesOverview");
   const form = qs("#contentPageForm");
-  fillContentEditor(pageKey);
+  fillContentEditor(page.key);
   if (grid) grid.hidden = true;
   if (form) form.hidden = false;
+  if (updateUrl) {
+    const url = contentEditorUrl(page.key);
+    const statePayload = { page: "content", contentPage: page.key };
+    if (window.location.pathname.replace(/\/+$/, "") === url.replace(/\/+$/, "")) {
+      history.replaceState(statePayload, "", url);
+    } else {
+      history.pushState(statePayload, "", url);
+    }
+  }
   form?.scrollIntoView({ behavior: "smooth", block: "start" });
 }
 
@@ -1981,7 +2024,12 @@ function renderContentPreview() {
 
 function fillContentPageForm() {
   renderContentPageCards();
-  showContentPageOverview();
+  const directContentPage = contentPageFromLocation();
+  if (directContentPage) {
+    openContentPageEditor(directContentPage, false);
+  } else {
+    showContentPageOverview(false);
+  }
 }
 
 function contentPagesPayload() {
@@ -1992,8 +2040,10 @@ function contentPagesPayload() {
   });
 
   const pageContent = getAdminPageContent(settings);
-  const editorKey = qs("#contentEditorPageKey")?.value || state.activeContentPage || "services";
-  if (editableContentPageMap[editorKey]) {
+  const editorKey = qs("#contentEditorPageKey")?.value || state.activeContentPage || "";
+  const contentForm = qs("#contentPageForm");
+  const editorIsOpen = Boolean(contentForm && contentForm.hidden === false && editableContentPageMap[editorKey]);
+  if (editorIsOpen) {
     pageContent[editorKey] = currentContentEditorEntry();
   }
 
@@ -3178,10 +3228,10 @@ function bindEvents() {
   qs("#contentPagesOverview")?.addEventListener("click", (event) => {
     const card = event.target.closest("[data-content-page-card]");
     if (!card) return;
-    openContentPageEditor(card.dataset.contentPageCard || "services");
+    openContentPageEditor(card.dataset.contentPageCard || "services", true);
   });
 
-  qs("#contentEditorBack")?.addEventListener("click", showContentPageOverview);
+  qs("#contentEditorBack")?.addEventListener("click", () => showContentPageOverview(true));
 
   qsa("#contentPageForm input, #contentPageForm textarea, #contentPageForm select").forEach((input) => {
     input.addEventListener("input", renderContentPreview);

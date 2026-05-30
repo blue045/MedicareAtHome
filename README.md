@@ -81,17 +81,23 @@ In the admin panel, the **Content Pages** section has cards for:
 - Contact
 - About
 
-Clicking a card opens an editor for that page. Admins can edit:
+Clicking a card opens a dedicated editor URL such as `/su/content/ambulance` or `/superuser/content/ambulance`. From there, admins can edit the visible page content from one place:
 
 - Hamburger/menu label
 - Small badge/kicker text
 - Page title
 - Short description
-- Extra body text
+- Full page intro/body text
+- Top banner image URL
+- Notice/highlight title and text
+- Main section title and description
+- Custom page blocks with title, description, image URL, button label, and button URL
+- Bottom note
 - Primary button label and URL
 - Secondary button label and URL
 - Layout style
 - Hide/show in navigation
+- Option to hide the default cards/list/form and use only the edited content
 
 This data is saved in Turso through the settings system. The database migration is automatic.
 
